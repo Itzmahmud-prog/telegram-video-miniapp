@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login - Video Library</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #10131b;
+    font-family: Arial, sans-serif;
+    color: white;
+    padding: 20px;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 400px;
+    background: #1c2230;
+    padding: 35px 28px;
+    border-radius: 18px;
+    border: 1px solid #343b4b;
+    box-shadow: 0 15px 45px rgba(0,0,0,.3);
+}
+
+.logo {
+    text-align: center;
+    font-size: 38px;
+    margin-bottom: 10px;
+}
+
+h2 {
+    text-align: center;
+    margin: 0 0 8px;
+    color: #6c9cff;
+}
+
+.subtitle {
+    text-align: center;
+    color: #aab2c3;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 20px;
+    background: #101722;
+    color: white;
+    border: 1px solid #343b4b;
+    border-radius: 9px;
+    outline: none;
+    font-size: 15px;
+}
+
+input:focus {
+    border-color: #6c9cff;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    background: #3979ed;
+    border: none;
+    border-radius: 9px;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2865d2;
+}
+
+button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+#message {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+
+    <div class="logo">▶</div>
+
+    <h2>Admin Login</h2>
+
+    <p class="subtitle">Video Library Management System</p>
+
+    <form id="loginForm">
+
+        <label>Username</label>
+        <input
+            type="text"
+            id="username"
+            placeholder="Enter username"
+            autocomplete="username"
+            required
+        >
+
+        <label>Password</label>
+        <input
+            type="password"
+            id="password"
+            placeholder="Enter password"
+            autocomplete="current-password"
+            required
+        >
+
+        <button type="submit" id="loginBtn">
+            Login to Dashboard
+        </button>
+
+    </form>
+
+    <div id="message"></div>
+
+</div>
+
+<script>
+
+const API_URL = "http://127.0.0.1:8000";
+
+document.getElementById("loginForm").addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const button = document.getElementById("loginBtn");
+    const message = document.getElementById("message");
+
+    button.disabled = true;
+    button.textContent = "Please wait...";
+    message.textContent = "";
+
+    try {
+
+        const response = await fetch(API_URL + "/admin/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+
+            message.style.color = "#4ade80";
+            message.textContent = "Login successful!";
+
+            // Temporary navigation for local testing
+            window.location.href = "dashboard.html";
+
+        } else {
+
+            message.style.color = "#ff6b6b";
+            message.textContent = "Invalid username or password.";
+
+        }
+
+    } catch (error) {
+
+        message.style.color = "#ff6b6b";
+        message.textContent = "Backend connection failed!";
+
+    }
+
+    button.disabled = false;
+    button.textContent = "Login to Dashboard";
+
+});
+
+</script>
+
+</body>
+</html>
