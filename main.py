@@ -261,11 +261,11 @@ async def get_thumbnail_image(thumbnail_id: str):
                 media_type=image_response.headers.get("content-type", "image/jpeg")
             )
 
-    except HTTPException:
-    raise
-except Exception as e:
-    print("THUMBNAIL ERROR:", repr(e))
-    raise HTTPException(
-        status_code=500,
-        detail=f"Thumbnail error: {str(e)}"
-    )
+        except HTTPException:
+        raise
+    except Exception as e:
+        print("THUMBNAIL ERROR:", repr(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Thumbnail error: {str(e)}"
+        )
