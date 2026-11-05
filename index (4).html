@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Library</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="//libtl.com/sdk.js" data-zone="12170493" data-sdk="show_12170493"></script>
+
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d30;--muted:#9eabc2;--accent:#6ea8ff;--line:#293550}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f4f7ff;font-family:Arial,sans-serif}
+header{padding:24px 18px 20px;background:linear-gradient(135deg,#172b4d,#111827);border-bottom:1px solid var(--line)}
+header h2{margin:0 0 7px;font-size:23px;color:#8bb8ff}header p{margin:0;color:var(--muted);font-size:13px}
+.user-bar{max-width:1000px;margin:12px auto 0;padding:0 18px}.user-status{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--muted);font-size:13px}.user-status.ok{border-color:#246b50;color:#a8e6c7}.user-status.error{border-color:#8a3b48;color:#ffb9c2}
+.container{max-width:1000px;margin:auto;padding:18px}
+.toolbar{display:grid;grid-template-columns:1fr 170px;gap:10px;margin-bottom:18px}
+input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#151d30;color:white;font-size:14px}
+.section-title{font-size:16px;margin:8px 0 14px;color:#e8efff}
+.video-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.video-card{background:var(--panel);border:1px solid #202c45;border-radius:13px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.video-card:active{transform:scale(.98)}.video-card:hover{border-color:#527ab8}
+.thumbnail{height:125px;background:linear-gradient(135deg,#334b78,#17243c);display:flex;align-items:center;justify-content:center;position:relative;color:#dbe8ff;font-size:34px}
+.thumbnail img{width:100%;height:100%;object-fit:cover}.play{position:absolute;right:10px;bottom:9px;background:#0009;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;font-size:15px}
+.video-info{padding:12px}.video-info h3{margin:0 0 8px;font-size:14px;line-height:1.4}.meta{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);text-align:center;padding:34px 10px;grid-column:1/-1;background:var(--panel);border-radius:12px}
+.modal{position:fixed;inset:0;background:#050914df;display:none;align-items:flex-end;justify-content:center;padding:14px;z-index:5}
+.modal.open{display:flex}.sheet{width:100%;max-width:520px;background:#151d30;border:1px solid var(--line);border-radius:18px;padding:18px;max-height:88vh;overflow:auto}
+.detail-image{width:100%;height:190px;object-fit:cover;border-radius:12px;background:#253754}
+.sheet h2{font-size:19px;margin:14px 0 7px}.sheet p{color:var(--muted);font-size:13px;line-height:1.5}
+.action{width:100%;border:0;border-radius:11px;padding:14px;background:#397fe8;color:white;font-size:15px;font-weight:bold;margin-top:10px;cursor:pointer}
+.secondary{background:#293550}.notice{font-size:12px!important;color:#9eabc2!important;margin-top:12px}
+@media(min-width:650px){.video-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.thumbnail{height:155px}.modal{align-items:center}}
+</style>
+</head>
+
+<body>
+<header><h2>▶ Video Library</h2><p>Discover videos and explore the collection</p></header>
+<div class="user-bar"><div class="user-status" id="userStatus">Checking Telegram login...</div></div>
+<main class="container">
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search videos...">
+    <select id="country"><option value="">All Countries</option></select>
+  </div>
+  <h3 class="section-title">Latest Videos</h3>
+  <div class="video-grid" id="videoList"><div class="empty">Loading videos...</div></div>
+</main>
+<div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-label="Video details">
+  <section class="sheet">
+    <img id="detailImage" class="detail-image" alt="Video thumbnail" hidden>
+    <h2 id="detailTitle"></h2><div class="meta" id="detailMeta"></div>
+    <p id="detailDescription">Watch this video by completing the access step.</p>
+    <button class="action" id="watchAdButton">▶ Watch Ad to Unlock</button>
+    <button class="action secondary" id="closeDetails">Close</button>
+    <p class="notice">Watch two verified ads to receive this video. After delivery, it will be deleted automatically according to the admin setting.</p>
+  </section>
+</div>
+<script>
+// Local development API. Change this to your deployed HTTPS backend URL before production.
+const API_BASE = "https://telegram-video-miniapp.onrender.com";
+const API_URL = `${API_BASE}/videos`;
+let allVideos = [], selectedVideo = null, currentUser = null;
+let telegramInitData = "";
+
+async function telegramLogin(){
+ const status = $("userStatus");
+ const tg = window.Telegram && window.Telegram.WebApp;
+
+ if(!tg || !tg.initData){
+   status.textContent = "Preview mode: open this Mini App inside Telegram to sign in.";
+   return;
+ }
+
+ // Keep the signed Telegram initData for authenticated API requests.
+ telegramInitData = tg.initData;
+
+ try{
+   tg.ready();
+   tg.expand();
+
+   const response = await fetch(`${API_BASE}/auth/telegram`, {
+     method: "POST",
+     headers: {"Content-Type": "application/json"},
+     body: JSON.stringify({init_data: tg.initData})
+   });
+
+   const result = await response.json();
+   if(!response.ok || !result.success){
+     throw new Error(result.detail || "Telegram authentication failed");
+   }
+
+   currentUser = result.user || {};
+   const displayName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(" ") || "Telegram user";
+   status.textContent = `Signed in as ${displayName}${currentUser.username ? " (@"+currentUser.username+")" : ""}`;
+   status.classList.add("ok");
+ }catch(error){
+   status.textContent = "Login failed: " + error.message;
+   status.classList.add("error");
+   console.error("Telegram authentication error:", error);
+ }
+}
+const $ = id => document.getElementById(id);
+function escapeHTML(value){return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function getThumbnailUrl(video){
+ const value = video.thumbnail || video.thumbnail_id || "";
+ if(!value) return "";
+ if(typeof value === "object" && value.url) return value.url;
+ const text = String(value).trim();
+ if(/^https?:\/\//i.test(text)) return text;
+ if(text.startsWith("/")) return `${API_BASE}${text}`;
+ return `${API_BASE}/thumbnails/${encodeURIComponent(text)}/image`;
+}
+async function loadVideos(){
+ const list=$("videoList");
+ try{
+  const response=await fetch(API_URL);
+  if(!response.ok) throw new Error("Could not load videos");
+  const data=await response.json(); allVideos=data.videos||[];
+  const countries=[...new Set(allVideos.map(v=>v.country).filter(Boolean))].sort();
+  $("country").innerHTML='<option value="">All Countries</option>'+countries.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
+  renderVideos();
+ }catch(error){list.innerHTML='<div class="empty">Could not connect to backend. Please start the backend and refresh.</div>';}
+}
+function renderVideos(){
+ const q=$("search").value.trim().toLowerCase(), country=$("country").value;
+ const filtered=allVideos.filter(v=>(v.status||"active")==="active"&&(v.title||"").toLowerCase().includes(q)&&(!country||v.country===country));
+ $("videoList").innerHTML=filtered.length?filtered.map((v,i)=>{
+  const thumb=getThumbnailUrl(v);
+  return `<article class="video-card" data-index="${allVideos.indexOf(v)}">
+   <div class="thumbnail">${thumb?`<img src="${escapeHTML(thumb)}" alt="" onerror="this.remove()">`:"▶"}<span class="play">▶</span></div>
+   <div class="video-info"><h3>${escapeHTML(v.title||"Untitled")}</h3><div class="meta">${escapeHTML(v.country||"Unknown")} · ${escapeHTML(v.category||"Video")}</div></div>
+  </article>`;
+ }).join(""):'<div class="empty">No videos found.</div>';
+ document.querySelectorAll(".video-card").forEach(card=>card.addEventListener("click",()=>openDetails(allVideos[Number(card.dataset.index)])));
+}
+function openDetails(video){
+ selectedVideo=video;$("detailTitle").textContent=video.title||"Untitled";
+ $("detailMeta").textContent=(video.country||"Unknown")+" · "+(video.category||"Video");
+ const img=$("detailImage"); const thumb=getThumbnailUrl(video); if(thumb){img.src=thumb;img.hidden=false;img.onerror=()=>{img.hidden=true;};}else{img.hidden=true;img.removeAttribute("src");}
+ $("detailModal").classList.add("open");
+}
+function closeDetails(){$("detailModal").classList.remove("open");selectedVideo=null;}
+$("search").addEventListener("input",renderVideos);$("country").addEventListener("change",renderVideos);
+$("closeDetails").addEventListener("click",closeDetails);
+$("detailModal").addEventListener("click",e=>{if(e.target===$("detailModal"))closeDetails();});
+async function waitForVerifiedAd(sessionId, timeoutMs=120000){
+ const started=Date.now();
+ while(Date.now()-started<timeoutMs){
+  const response=await fetch(`${API_BASE}/ad-status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,session_id:sessionId})});
+  const data=await response.json();
+  if(!response.ok) throw new Error(data.detail||"Could not verify ad");
+  if(data.verified_count>=2) return data;
+  await new Promise(resolve=>setTimeout(resolve,2500));
+ }
+ throw new Error("Ad verification is taking too long. Please try again in a moment.");
+}
+async function showOneRewardedAd(ymid, label){
+ if(typeof window.show_12170493!=="function") throw new Error("Monetag SDK is not loaded. Please reopen the Mini App.");
+ const result=await window.show_12170493({ymid,requestVar:label});
+ if(result?.reward_event_type!=="valued") throw new Error("Monetag did not confirm a rewarded ad. Please try again.");
+}
+$("watchAdButton").addEventListener("click",async()=>{
+ if(!currentUser||!telegramInitData){alert("Please open this Mini App inside Telegram first.");return;}
+ if(!selectedVideo)return;
+ const button=$("watchAdButton"), videoId=selectedVideo.id;
+ button.disabled=true;
+ try{
+  button.textContent="Preparing ads...";
+  const startResponse=await fetch(`${API_BASE}/ad-sessions`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,video_id:videoId})});
+  const session=await startResponse.json();
+  if(!startResponse.ok) throw new Error(session.detail||"Could not start ad session");
+  button.textContent="Ad 1 of 2: Please wait...";
+  await showOneRewardedAd(session.ymid1,"video_unlock_ad1");
+  button.textContent="Ad 2 of 2: Please wait...";
+  await showOneRewardedAd(session.ymid2,"video_unlock_ad2");
+  button.textContent="Verifying both ads...";
+  await waitForVerifiedAd(session.session_id);
+  button.textContent="Sending video...";
+  const deliveryResponse=await fetch(`${API_BASE}/deliver`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,session_id:session.session_id})});
+  const delivery=await deliveryResponse.json();
+  if(!deliveryResponse.ok) throw new Error(delivery.detail||"Video delivery failed");
+  alert(`Video sent to your Telegram chat. It will be deleted after ${delivery.auto_delete_minutes} minutes.`);
+  closeDetails();
+ }catch(error){alert(error.message||"Something went wrong. Please try again.");}
+ finally{button.disabled=false;button.textContent="▶ Watch 2 Ads to Unlock";}
+});
+telegramLogin();
+loadVideos();
+</script>
+</body>
+</html>
