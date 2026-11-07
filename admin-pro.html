@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Pro - Video Library</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10131b;color:#fff;font-family:Arial,sans-serif;padding-bottom:60px}
+header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#1c2230;border-bottom:1px solid #343b4b}
+header b{color:#6c9cff;font-size:18px;flex:1}
+#who{font-size:12px;color:#aab2c3}
+nav{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;background:#10131b;position:sticky;top:0;z-index:4}
+nav button{flex:0 0 auto;background:#1c2230;border:1px solid #343b4b}
+nav button.on{background:#3979ed;border-color:#3979ed}
+main{padding:0 16px;max-width:900px;margin:auto}
+h3{margin:18px 0 10px;font-size:16px}
+button{padding:11px 14px;background:#3979ed;border:0;border-radius:9px;color:#fff;font-weight:bold;font-size:14px;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.gray{background:#343b4b}.red{background:#d64545}.green{background:#1f7a4d}.amber{background:#9a6b0a}
+.sm{padding:7px 10px;font-size:13px}
+input,select,textarea{width:100%;padding:11px;background:#101722;color:#fff;border:1px solid #343b4b;border-radius:9px;font-size:14px;margin:4px 0 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#6c9cff}
+label{font-size:13px;color:#aab2c3}
+.card{background:#1c2230;border:1px solid #343b4b;border-radius:14px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .card{margin:0}
+.stat b{font-size:24px;display:block;margin-bottom:4px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.muted{color:#aab2c3;font-size:13px;line-height:1.5}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;color:#fff;background:#343b4b}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+#toast{position:fixed;left:16px;right:16px;bottom:16px;padding:12px;border-radius:10px;display:none;z-index:9;text-align:center;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <b>▶ Admin Pro</b>
+  <span id="who"></span>
+  <button class="sm gray" id="logout">Logout</button>
+</header>
+<nav id="tabs"></nav>
+<main id="view"></main>
+<div id="toast"></div>
+
+<script>
+const API = "https://telegram-video-miniapp.onrender.com";
+const token = localStorage.getItem("admin_token");
+const role = localStorage.getItem("admin_role") || "";
+const me = localStorage.getItem("admin_user") || "";
+if (!token) location.replace("admin.html?next=pro");
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = t => t ? new Date(t * 1000).toLocaleString() : "-";
+const RANK = {viewer: 1, editor: 2, super: 3};
+const can = r => (RANK[role] || 0) >= RANK[r];
+
+function toast(message, ok = true) {
+  const t = $("toast");
+  t.textContent = message;
+  t.style.background = ok ? "#1f7a4d" : "#a83232";
+  t.style.display = "block";
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.style.display = "none", 3500);
+}
+
+async function api(path, method = "GET", body) {
+  const response = await fetch(API + path, {
+    method,
+    headers: {"Content-Type": "application/json", Authorization: "Bearer " + token},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401) {
+    localStorage.removeItem("admin_token");
+    location.replace("admin.html?next=pro");
+    throw new Error("Please log in again");
+  }
+  if (!response.ok) throw new Error(data.detail || "Request failed");
+  return data;
+}
+
+async function run(fn) {
+  try { await fn(); } catch (e) { toast(e.message || "Something went wrong", false); }
+}
+
+/* ---------- Stats ---------- */
+async function viewStats() {
+  const d = await api("/admin/stats");
+  const u = d.users, v = d.videos, c = d.coins, e = d.earnings;
+  const card = (n, l) => `<div class="card stat"><b>${esc(n)}</b><span class="muted">${esc(l)}</span></div>`;
+  const earned = Object.entries(c.earned_today).map(([k, n]) => `${esc(k)}: ${n}`).join(" · ") || "-";
+  $("view").innerHTML = `
+    <div class="row"><h3>Users</h3><button class="sm gray" data-a="refresh">Refresh</button></div>
+    <div class="grid">${card(u.total, "Total users")}${card(u.new_today, "New today")}${card(u.active_today, "Active today")}${card(u.banned, "Banned")}</div>
+    <h3>Videos</h3>
+    <div class="grid">${card(v.total, "Total videos")}${card(v.delivered_today, "Delivered today")}${card(v.delivered_7d, "Delivered (7 days)")}</div>
+    <h3>Coins</h3>
+    <div class="grid">${card(c.circulating ?? "n/a", "Coins in circulation")}${card(c.coin_ads_today, "Coin ads today")}${card(c.spent_today, "Coins spent today")}${card(c.adjusted_today, "Admin adjusted today")}</div>
+    <div class="card muted" style="margin-top:10px">Coins earned today: ${earned}</div>
+    <h3>Ad earnings (Monetag, estimated)</h3>
+    <div class="grid">${card("$" + e.usd_today, "Today (" + e.ads_today + " ads)")}${card("$" + e.usd_7d, "Last 7 days (" + e.ads_7d + " ads)")}</div>
+    <h3>Top videos this week</h3>
+    ${d.top_videos.map((t, i) => `<div class="card row"><span>#${i + 1} ${esc(t.title)}</span><b>${t.count}</b></div>`).join("") || '<p class="muted">No views yet this week.</p>'}`;
+}
+
+/* ---------- Coin settings ---------- */
+const COIN_FIELDS = [
+  ["referral_reward", "Referral reward (coins per friend)"],
+  ["video_cost", "Coins needed for one video"],
+  ["ad_reward", "Coins for each ad watched"],
+  ["join_bonus", "Join bonus for new users"],
+  ["daily_ad_limit", "Coin ads allowed per day"],
+  ["checkin_reward", "Daily check-in coins"],
+  ["share_reward", "Coins when a shared video is watched"],
+];
+async function viewCoins() {
+  const s = (await api("/admin/coin-settings")).settings;
+  $("view").innerHTML = `<div class="card"><h3 style="margin-top:0">Coin settings</h3>
+    ${COIN_FIELDS.map(([k, l]) => `<label>${l}</label><input type="number" min="0" id="c_${k}" value="${s[k]}">`).join("")}
+    <button data-a="savecoins" ${can("super") ? "" : "disabled"}>Save settings</button>
+    <p class="muted">${can("super") ? "Changes apply to all users within a minute." : "Only a Super admin can change these."}</p></div>`;
+}
+
+/* ---------- Users ---------- */
+async function viewUsers() {
+  $("view").innerHTML = `<div class="card"><input id="q" placeholder="Telegram ID, @username or name"><button data-a="search">Search</button></div><div id="ulist"></div><div id="logs"></div>`;
+  $("q").onkeydown = e => { if (e.key === "Enter") run(loadUsers); };
+  await loadUsers();
+}
+async function loadUsers() {
+  const d = await api("/admin/users?q=" + encodeURIComponent($("q").value.trim()));
+  $("ulist").innerHTML = d.users.map(u => `<div class="card">
+    <div class="row"><b>${esc(u.name || "(no name)")} ${u.banned ? '<span class="badge red">BANNED</span>' : ""}</b><span>🪙 ${u.coins}</span></div>
+    <div class="muted">${u.username ? "@" + esc(u.username) + " · " : ""}ID ${esc(u.id)} · referrals ${u.referrals}${u.referred_by ? " · invited by " + esc(u.referred_by) : ""}</div>
+    <div class="muted">Joined ${fmt(u.created_at)} · Last seen ${fmt(u.last_seen)}</div>
+    <div class="actions">
+      <button class="sm" data-a="coins" data-id="${esc(u.id)}">± Coins</button>
+      <button class="sm ${u.banned ? "gray" : "red"}" data-a="ban" data-b="${u.banned ? 0 : 1}" data-id="${esc(u.id)}">${u.banned ? "Unban" : "Ban"}</button>
+      <button class="sm gray" data-a="logs" data-id="${esc(u.id)}">Coin log</button>
+    </div></div>`).join("") || '<p class="muted">No users found.</p>';
+}
+
+/* ---------- Trending pins ---------- */
+let pinList = [], vids = [];
+async function viewPins() {
+  const [p, v] = await Promise.all([api("/admin/trending-pins"), api("/admin/videos")]);
+  pinList = p.pinned; vids = v.videos; drawPins();
+}
+function drawPins() {
+  const title = id => (vids.find(v => v.id === id) || {title: "(deleted video)"}).title;
+  const free = vids.filter(v => !pinList.includes(v.id));
+  $("view").innerHTML = `<div class="card"><h3 style="margin-top:0">Pinned to Trending (max 15)</h3>
+    <p class="muted">Pinned videos always appear first in the Trending tab. Pending videos stay hidden until published.</p>
+    ${pinList.map((id, i) => `<div class="row" style="margin:8px 0"><span>${i + 1}. ${esc(title(id))}</span><span><button class="sm gray" data-a="up" data-i="${i}">↑</button> <button class="sm red" data-a="unpin" data-i="${i}">✕</button></span></div>`).join("") || '<p class="muted">Nothing pinned.</p>'}</div>
+    <div class="card"><select id="pv"><option value="">Choose a video...</option>${free.map(v => `<option value="${esc(v.id)}">${esc(v.title)}${v.status !== "active" ? " (" + esc(v.status) + ")" : ""}</option>`).join("")}</select>
+    <div class="actions"><button data-a="pin">📌 Pin video</button><button class="green" data-a="savepins">Save pins</button></div></div>`;
+}
+
+/* ---------- Scheduled publishing ---------- */
+let schedAll = [];
+async function viewSched() {
+  schedAll = (await api("/admin/videos")).videos.sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1));
+  $("view").innerHTML = `<p class="muted">Choose a date and time (your device time). The video becomes Pending and goes live automatically.</p><input id="sf" placeholder="Filter by title"><div id="slist"></div>`;
+  $("sf").oninput = drawSched;
+  drawSched();
+}
+function drawSched() {
+  const f = ($("sf").value || "").toLowerCase();
+  $("slist").innerHTML = schedAll.filter(v => (v.title || "").toLowerCase().includes(f)).map(v => `<div class="card">
+    <div class="row"><b>${esc(v.title || "(no title)")}</b><span class="badge ${v.status === "active" ? "green" : "amber"}">${esc(v.status)}</span></div>
+    ${v.publish_at ? `<div class="muted">Goes live: ${fmt(v.publish_at)}</div>` : ""}
+    <input type="datetime-local" id="dt_${esc(v.id)}" style="margin-top:10px">
+    <div class="actions"><button class="sm" data-a="sched" data-id="${esc(v.id)}">Schedule</button><button class="sm gray" data-a="now" data-id="${esc(v.id)}">Publish now</button>${v.publish_at ? `<button class="sm red" data-a="unsched" data-id="${esc(v.id)}">Clear schedule</button>` : ""}</div></div>`).join("") || '<p class="muted">No videos.</p>';
+}
+
+/* ---------- Broadcast ---------- */
+let poll = null;
+async function viewCast() {
+  $("view").innerHTML = `<div class="card"><h3 style="margin-top:0">Send a message to all users</h3>
+    <label>Send through</label><select id="bb"><option>Loading...</option></select>
+    <textarea id="bt" rows="5" maxlength="4000" placeholder="Message text (optional if you attach a photo or video)"></textarea><div class="muted" id="bc">0 / 4000</div>
+    <label style="display:block;margin-top:10px">Photo or video (optional)</label>
+    <input type="file" id="bf" accept="image/*,video/*">
+    <button data-a="cast" ${can("editor") ? "" : "disabled"} style="margin-top:10px">📣 Send to everyone</button>
+    <p class="muted">Photo up to 10 MB, video up to 40 MB. With media, the text becomes the caption. People who never started the chosen bot cannot receive it.</p></div>
+    <h3>Recent broadcasts</h3><div id="bl"></div>`;
+  $("bt").oninput = () => $("bc").textContent = $("bt").value.length + " / 4000";
+  run(loadBots);
+  await loadCasts();
+  poll = setInterval(() => run(loadCasts), 4000);
+}
+async function loadCasts() {
+  if (!$("bl")) return;
+  const d = await api("/admin/broadcasts");
+  $("bl").innerHTML = d.broadcasts.map(b => `<div class="card">
+    <div class="row"><span class="muted">${fmt(b.created_at)} · ${esc(b.created_by)} · ${esc(b.bot || "delivery")}${b.media ? " · " + (b.media === "video" ? "🎬" : "📷") : ""}</span><span class="badge ${b.status === "done" ? "green" : b.status === "error" ? "red" : "amber"}">${esc(b.status)}</span></div>
+    <div style="margin:8px 0;white-space:pre-wrap">${esc(b.text)}</div>
+    <div class="muted">Sent ${b.sent || 0} / ${b.total || 0} · unreachable ${b.unreachable || 0} · failed ${b.failed || 0}</div></div>`).join("") || '<p class="muted">No broadcasts yet.</p>';
+}
+
+async function loadBots() {
+  const d = await api("/admin/broadcast-bots");
+  $("bb").innerHTML = d.bots.map(b => `<option value="${esc(b.key)}">${esc(b.label)}${b.username ? " (@" + esc(b.username) + ")" : ""}</option>`).join("") || '<option value="">No bot configured</option>';
+}
+
+/* ---------- Admins (super only) ---------- */
+async function viewAdmins() {
+  const d = await api("/admin/admins");
+  $("view").innerHTML = `<div class="card"><h3 style="margin-top:0">Add admin</h3>
+    <input id="an" placeholder="Username"><input id="ap" type="password" placeholder="Password (min 8 characters)">
+    <select id="ar"><option value="viewer">Viewer: can only look</option><option value="editor">Editor: users, coins, pins, schedule, broadcast</option><option value="super">Super: everything, incl. coin settings and admins</option></select>
+    <button data-a="addadmin">Add admin</button></div>
+    <div class="card muted">Main admin: <b>${esc(d.owner)}</b> (set in Render environment)</div>
+    ${d.admins.map(a => `<div class="card"><div class="row"><b>${esc(a.username)}</b><span class="badge ${a.disabled ? "red" : "green"}">${a.disabled ? "disabled" : esc(a.role)}</span></div>
+    <div class="muted">Added by ${esc(a.created_by)} · ${fmt(a.created_at)}</div>
+    <div class="actions"><select data-role="${esc(a.username)}" style="width:auto;margin:0">${["viewer", "editor", "super"].map(r => `<option ${r === a.role ? "selected" : ""}>${r}</option>`).join("")}</select>
+    <button class="sm" data-a="saverole" data-u="${esc(a.username)}">Set role</button>
+    <button class="sm gray" data-a="toggle" data-u="${esc(a.username)}" data-d="${a.disabled ? 0 : 1}">${a.disabled ? "Enable" : "Disable"}</button>
+    <button class="sm gray" data-a="resetpw" data-u="${esc(a.username)}">Reset password</button>
+    <button class="sm red" data-a="deladmin" data-u="${esc(a.username)}">Delete</button></div></div>`).join("")}`;
+}
+
+/* ---------- Button actions ---------- */
+const actions = {
+  refresh: () => showTab(current),
+  async savecoins() {
+    const body = {};
+    COIN_FIELDS.forEach(([k]) => body[k] = Number($("c_" + k).value));
+    await api("/admin/coin-settings", "PUT", body);
+    toast("Coin settings saved");
+  },
+  search: () => loadUsers(),
+  async coins(d) {
+    const amount = prompt("Coins to add (use a minus sign to remove):");
+    if (!amount) return;
+    const reason = prompt("Reason (optional):") || "";
+    const r = await api(`/admin/users/${d.id}/coins`, "POST", {amount: Number(amount), reason});
+    toast("New balance: " + r.coins);
+    await loadUsers();
+  },
+  async ban(d) {
+    const ban = d.b === "1";
+    const reason = ban ? prompt("Reason for ban (optional):") : "";
+    if (ban && reason === null) return;
+    await api(`/admin/users/${d.id}/ban`, "POST", {banned: ban, reason: reason || ""});
+    toast(ban ? "User banned" : "User unbanned");
+    await loadUsers();
+  },
+  async logs(d) {
+    const r = await api("/admin/coin-logs?telegram_id=" + d.id);
+    $("logs").innerHTML = `<div class="card"><h3 style="margin-top:0">Coin log · ${esc(d.id)}</h3>${r.logs.map(l => `<div class="row muted" style="margin:6px 0"><span>${fmt(l.created_at)} · ${esc(l.reason || l.type)}${l.note ? " (" + esc(l.note) + ")" : ""}${l.admin ? " · " + esc(l.admin) : ""}</span><b>${l.type === "spend" ? "-" : (l.amount > 0 ? "+" : "")}${l.amount}</b></div>`).join("") || '<p class="muted">No entries.</p>'}</div>`;
+    $("logs").scrollIntoView();
+  },
+  pin() {
+    const v = $("pv").value;
+    if (!v) return;
+    if (pinList.length >= 15) return toast("Maximum 15 pins", false);
+    pinList.push(v); drawPins();
+  },
+  unpin(d) { pinList.splice(+d.i, 1); drawPins(); },
+  up(d) { const i = +d.i; if (i > 0) { [pinList[i - 1], pinList[i]] = [pinList[i], pinList[i - 1]]; drawPins(); } },
+  async savepins() { await api("/admin/trending-pins", "PUT", {pinned: pinList}); toast("Pins saved"); },
+  async sched(d) {
+    const v = $("dt_" + d.id).value;
+    if (!v) return toast("Choose a date and time first", false);
+    await api(`/admin/videos/${d.id}/schedule`, "PUT", {publish_at: Math.floor(new Date(v).getTime() / 1000)});
+    toast("Scheduled"); await viewSched();
+  },
+  async now(d) {
+    if (!confirm("Publish this video now?")) return;
+    await api(`/admin/videos/${d.id}/schedule`, "PUT", {publish_now: true});
+    toast("Published"); await viewSched();
+  },
+  async unsched(d) {
+    await api(`/admin/videos/${d.id}/schedule`, "PUT", {});
+    toast("Schedule cleared (the video stays Pending)"); await viewSched();
+  },
+  async cast() {
+    const text = $("bt").value.trim(), bot = $("bb").value, file = $("bf").files[0];
+    if (!text && !file) return toast("Write a message or attach a photo or video", false);
+    if (!bot) return toast("No bot configured", false);
+    const label = $("bb").selectedOptions[0].textContent;
+    if (!confirm(`Send this ${file ? "media " : ""}message to ALL users through ${label}?`)) return;
+    let media_id = "";
+    if (file) {
+      const kind = file.type.startsWith("video/") ? "video" : file.type.startsWith("image/") ? "photo" : "";
+      if (!kind) return toast("Only photos and videos are supported", false);
+      if (file.size > (kind === "video" ? 40 : 10) * 1024 * 1024) return toast(kind === "video" ? "Video is larger than 40 MB" : "Photo is larger than 10 MB", false);
+      toast("Uploading file...");
+      const up = await fetch(API + `/admin/broadcast-media?kind=${kind}&filename=${encodeURIComponent(file.name)}`, {
+        method: "POST", headers: {Authorization: "Bearer " + token, "Content-Type": file.type}, body: file,
+      });
+      const upData = await up.json().catch(() => ({}));
+      if (!up.ok) throw new Error(upData.detail || "Upload failed");
+      media_id = upData.media_id;
+    }
+    await api("/admin/broadcast", "POST", {text, bot, media_id});
+    $("bt").value = ""; $("bf").value = ""; $("bc").textContent = "0 / 4000";
+    toast("Broadcast started"); await loadCasts();
+  },
+  async addadmin() {
+    await api("/admin/admins", "POST", {username: $("an").value.trim(), password: $("ap").value, role: $("ar").value});
+    toast("Admin added"); await viewAdmins();
+  },
+  async saverole(d) {
+    const role = document.querySelector(`[data-role="${d.u}"]`).value;
+    await api(`/admin/admins/${encodeURIComponent(d.u)}`, "PUT", {role});
+    toast("Role updated"); await viewAdmins();
+  },
+  async toggle(d) {
+    await api(`/admin/admins/${encodeURIComponent(d.u)}`, "PUT", {disabled: d.d === "1"});
+    toast("Updated"); await viewAdmins();
+  },
+  async resetpw(d) {
+    const password = prompt("New password for " + d.u + " (min 8 characters):");
+    if (!password) return;
+    await api(`/admin/admins/${encodeURIComponent(d.u)}`, "PUT", {password});
+    toast("Password changed");
+  },
+  async deladmin(d) {
+    if (!confirm("Delete admin " + d.u + "?")) return;
+    await api(`/admin/admins/${encodeURIComponent(d.u)}`, "DELETE");
+    toast("Admin deleted"); await viewAdmins();
+  },
+};
+$("view").addEventListener("click", e => {
+  const b = e.target.closest("[data-a]");
+  if (b) run(() => actions[b.dataset.a](b.dataset));
+});
+
+/* ---------- Tabs ---------- */
+const TABS = [["stats", "📊 Stats"], ["coins", "🪙 Coins"], ["users", "👥 Users"], ["pins", "📌 Trending"], ["sched", "🗓 Schedule"], ["cast", "📣 Broadcast"]]
+  .concat(role === "super" ? [["admins", "🛡 Admins"]] : []);
+const VIEWS = {stats: viewStats, coins: viewCoins, users: viewUsers, pins: viewPins, sched: viewSched, cast: viewCast, admins: viewAdmins};
+let current = "stats";
+function renderNav() {
+  $("tabs").innerHTML = TABS.map(([k, l]) => `<button class="${k === current ? "on" : ""}" data-t="${k}">${l}</button>`).join("");
+}
+function showTab(t) {
+  current = t; clearInterval(poll); renderNav();
+  $("view").innerHTML = '<p class="muted">Loading...</p>';
+  run(VIEWS[t]);
+}
+$("tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (b) showTab(b.dataset.t); };
+$("logout").onclick = () => {
+  ["admin_token", "admin_role", "admin_user"].forEach(k => localStorage.removeItem(k));
+  location.replace("admin.html?next=pro");
+};
+$("who").textContent = `${me} · ${role}`;
+if (token) showTab("stats");
+</script>
+</body>
+</html>
