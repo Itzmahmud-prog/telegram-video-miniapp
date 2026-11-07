@@ -1,0 +1,735 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Library</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="//libtl.com/sdk.js" data-zone="12170493" data-sdk="show_12170493"></script>
+
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d30;--muted:#9eabc2;--accent:#6ea8ff;--line:#293550}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f4f7ff;font-family:Arial,sans-serif}
+header{padding:10px 14px;background:linear-gradient(135deg,#172b4d,#111827);border-bottom:1px solid var(--line)}
+.header-row{max-width:1000px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.header-title{min-width:0}.header-title h2{margin:0;font-size:18px;color:#8bb8ff;line-height:1.25}.header-title p{margin:3px 0 0;color:var(--muted);font-size:11px}
+.profile-box{display:flex;align-items:center;gap:7px;min-width:0;max-width:52%}.profile-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:#293550;border:1px solid #526b91;display:flex;align-items:center;justify-content:center;color:#dce7ff;font-size:15px;font-weight:bold;overflow:hidden}.profile-info{min-width:0;display:flex;flex-direction:column;gap:2px}.profile-name{font-size:11px;font-weight:bold;color:#f4f7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}.user-status{margin:0;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.user-status.ok{color:#8ee0b4}.user-status.error{color:#ffb9c2}
+@media(max-width:380px){.header-title h2{font-size:16px}.header-title p{display:none}.profile-avatar{width:30px;height:30px;flex-basis:30px}.profile-name{max-width:95px}}
+.container{max-width:1000px;margin:auto;padding:18px}
+.search-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin-bottom:12px}.search-button{border:0;border-radius:11px;padding:0 20px;background:#397fe8;color:white;font-size:14px;font-weight:bold;cursor:pointer}.search-button:active{transform:scale(.98)}
+input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#151d30;color:white;font-size:14px}
+.section-title{font-size:16px;margin:8px 0 14px;color:#e8efff}
+.category-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;overflow:visible;padding:2px 0 16px;margin-bottom:4px}
+.category-chip{flex:0 0 auto;max-width:100%;border:1px solid #303033;border-radius:999px;padding:clamp(9px,1.5vw,14px) clamp(16px,2.1vw,24px);background:#1d1d1f;color:#f4f4f5;font-family:Arial,sans-serif;font-size:clamp(16px,2.8vw,27px);font-weight:800;line-height:1.2;white-space:nowrap;cursor:pointer;box-shadow:inset 0 1px 0 #ffffff0a}
+.category-chip.active{background:linear-gradient(135deg,#b51de0,#c02be7);border-color:#c02be7;color:#fff;box-shadow:0 2px 10px #b51de044}
+.video-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.video-card{background:var(--panel);border:1px solid #202c45;border-radius:13px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+.video-card:active{transform:scale(.98)}.video-card:hover{border-color:#527ab8}
+.thumbnail{aspect-ratio:16/9;height:auto;border:2px solid #b52a83;border-radius:15px;overflow:hidden;background:linear-gradient(135deg,#334b78,#17243c);display:flex;align-items:center;justify-content:center;position:relative;color:#dbe8ff;font-size:34px}
+.thumbnail img{width:100%;height:100%;object-fit:cover;display:block}.play{position:absolute;right:10px;bottom:9px;background:#0009;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;font-size:15px}
+.video-info{padding:10px 2px 2px}.video-info h3{margin:0 0 7px;font-size:16px;line-height:1.4;color:#f4f7ff}.video-categories{display:flex;gap:6px;flex-wrap:wrap}.video-category{font-size:11px;color:#cbd8ef;background:#24334d;border:1px solid #344967;border-radius:999px;padding:4px 9px}.meta{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);text-align:center;padding:34px 10px;grid-column:1/-1;background:var(--panel);border-radius:12px}
+.modal{position:fixed;inset:0;background:#050914df;display:none;align-items:flex-end;justify-content:center;padding:14px;z-index:5}
+.modal.open{display:flex}.sheet{width:100%;max-width:520px;background:#151d30;border:1px solid var(--line);border-radius:18px;padding:18px;max-height:88vh;overflow:auto}
+.detail-image{width:100%;height:190px;object-fit:cover;border-radius:12px;background:#253754}
+.sheet h2{font-size:19px;margin:14px 0 7px}.sheet p{color:var(--muted);font-size:13px;line-height:1.5}
+.action{width:100%;border:0;border-radius:11px;padding:14px;background:#397fe8;color:white;font-size:15px;font-weight:bold;margin-top:10px;cursor:pointer}
+.secondary{background:#293550}.notice{font-size:12px!important;color:#9eabc2!important;margin-top:12px}
+.header-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.icon-btn{width:40px;height:40px;border:1px solid #526b91;border-radius:50%;background:#293550;color:#fff;font-size:17px;cursor:pointer;display:grid;place-items:center;padding:0}
+.coin-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.coin-pill{font-size:14px;font-weight:bold;color:#ffd666;line-height:1;white-space:nowrap}
+.earn-btn{border:0;border-radius:999px;padding:4px 10px;background:#b51de0;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap}
+.search-toolbar.collapsed{display:none}
+.earn-card{background:#101828;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.earn-card h3{margin:0 0 6px;font-size:15px;color:#f4f7ff}.earn-card p{margin:0 0 8px}
+.coin-action{background:#a67c00}
+.guide-item{display:flex;gap:12px;margin:14px 0}.guide-ico{font-size:24px;flex:0 0 30px;text-align:center}
+.guide-item b{font-size:14px;color:#f4f7ff}.guide-item>div>b{display:block;margin-bottom:3px}.guide-item p{margin:0;line-height:1.55}
+.guide-item p b{color:#ffd666}
+.sm-btn{margin-top:8px;border:1px solid var(--line);background:#1b2740;color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer}
+.guide-tip{margin-top:6px;padding:10px 12px;border-radius:12px;background:#2a2210;border:1px solid #5b4a14;font-size:13px;line-height:1.55;color:#ffe9a8}
+.guide-tip b{color:#ffd666}
+.search-suggest{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;max-height:50vh;overflow:auto}
+.sg-title{font-size:11px;color:var(--muted);padding:6px 8px;letter-spacing:1px;text-transform:uppercase;font-weight:bold}
+.sg-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer}
+.sg-item:hover,.sg-item:active{background:#1d2a45}
+.sg-item img{width:56px;height:32px;flex:0 0 56px;object-fit:cover;border-radius:6px;background:#253754}
+.sg-item span{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.container{padding-bottom:120px}
+.bottom-nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:520px;margin:auto;display:flex;gap:6px;padding:8px;background:#0c1224f2;border:1px solid var(--line);border-radius:28px;z-index:4;backdrop-filter:blur(8px)}
+.nav-btn{flex:1;border:0;background:transparent;color:#9aa6c8;border-radius:22px;padding:9px 6px;font-size:12px;font-weight:bold;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-btn .ni{font-size:20px;line-height:1}
+.nav-btn.active{background:linear-gradient(135deg,#8b5cf6,#14b8d4);color:#fff}
+.rank{position:absolute;left:10px;top:9px;background:#b51de0;color:#fff;font-size:12px;font-weight:bold;border-radius:999px;padding:3px 9px;z-index:1}
+.profile-card{display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:linear-gradient(135deg,#3b2f6b,#16203a);border:1px solid var(--line)}
+.pf-avatar{width:68px;height:68px;flex:0 0 68px;border-radius:50%;background:#293550;border:3px solid #8b5cf6;display:grid;place-items:center;font-size:28px;font-weight:bold;overflow:hidden}
+.pf-name{font-size:20px;font-weight:bold}.pf-user{color:var(--muted);font-size:14px;margin:2px 0 6px}
+.verified{display:inline-block;font-size:12px;font-weight:bold;padding:5px 10px;border:1px solid #526b91;border-radius:999px;background:#1b2740}
+.pf-section{margin:22px 0 10px;font-size:13px;letter-spacing:2px;font-weight:bold;color:#dbe8ff;text-transform:uppercase}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}
+.stat-num{font-size:30px;font-weight:bold}.stat-label{color:var(--muted);font-size:13px;font-weight:bold;margin-top:6px}
+.info-card{background:linear-gradient(135deg,#2a2550,#131b2e);border:1px solid var(--line);border-radius:20px;padding:4px 16px 16px}
+.info-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.info-row span{color:#aab6d3;font-weight:bold;font-size:14px}.info-row b{font-size:17px}
+.link-box{word-break:break-all;background:#101828;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;margin:10px 0}
+.btn-row{display:flex;gap:10px}.btn-row .action{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.chip{font-size:12px;font-weight:bold;border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:#1b2740}
+@media(min-width:700px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:650px){.modal{align-items:center}}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="header-row">
+    <div class="header-title"><h2>▶ Video Library</h2><p>Discover videos and explore the collection</p></div>
+    <div class="header-actions">
+      <button type="button" class="icon-btn" id="searchToggle" aria-label="Search">🔍</button>
+      <div class="coin-wrap">
+        <div class="coin-pill">🪙 <span id="coinCount">0</span></div>
+        <button type="button" class="earn-btn" id="earnButton">Earn Coin</button>
+      </div>
+    </div>
+    <div class="profile-box" style="display:none">
+      <div class="profile-avatar" id="profileAvatar" aria-label="Profile">👤</div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">Guest</div>
+        <div class="user-status" id="userStatus">Checking login...</div>
+      </div>
+    </div>
+  </div>
+</header>
+<main class="container" id="homeView">
+  <div class="search-toolbar collapsed" id="searchToolbar">
+    <input type="search" id="search" placeholder="Search videos..." aria-label="Search videos">
+    <button type="button" class="search-button" id="searchButton">Search</button>
+    <div class="search-suggest" id="searchSuggest" hidden></div>
+  </div>
+  <div class="category-filters" id="categoryFilters" aria-label="Video categories">
+    <button type="button" class="category-chip active" data-category="">All</button>
+  </div>
+  <h3 class="section-title">Latest Videos</h3>
+  <div class="video-grid" id="videoList"><div class="empty">Loading videos...</div></div>
+</main>
+<main class="container" id="trendingView" hidden>
+  <h3 class="section-title">🔥 Trending This Week</h3>
+  <div class="video-grid" id="trendingList"></div>
+</main>
+<main class="container" id="profileView" hidden>
+  <div class="profile-card">
+    <div class="pf-avatar" id="pfAvatar">👤</div>
+    <div><div class="pf-name" id="pfName">Guest</div><div class="pf-user" id="pfUser"></div><span class="verified">🛡 Verified User</span></div>
+  </div>
+  <div class="pf-section">📊 Overview</div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num" id="pfCoins">0</div><div class="stat-label">🪙 My Coins</div></div>
+    <div class="stat-card"><div class="stat-num" id="pfRefs">0</div><div class="stat-label">👥 Total Referrals</div></div>
+  </div>
+  <div class="pf-section">📅 Daily Check-in</div>
+  <div class="info-card" style="padding-top:16px">
+    <div class="meta">Check in every day and get <span class="js-checkin">1</span> coin. Resets at midnight.</div>
+    <button class="action" id="checkinButton">📅 Check in today</button>
+  </div>
+  <div class="pf-section">🔗 Referral System</div>
+  <div class="info-card">
+    <div class="info-row"><span>Per Referral Reward</span><b><span id="pfReward">5</span> Coins</b></div>
+    <div class="info-row"><span>Join Bonus</span><b><span id="pfJoin">5</span> Coins</b></div>
+    <div class="info-row"><span>Referral Code</span><b id="pfCode">-</b></div>
+    <h3 style="margin:16px 0 0;font-size:17px">Your Referral Link</h3>
+    <div class="link-box" id="pfLink"></div>
+    <div class="btn-row">
+      <button class="action" id="copyLinkButton">📋 Copy Link</button>
+      <button class="action secondary" id="shareLinkButton">↗ Share</button>
+    </div>
+  </div>
+  <div class="pf-section">⚡ More Coin Earning</div>
+  <div class="info-card" style="padding-top:16px">
+    <h3 style="margin:0 0 6px;font-size:18px">Watch Ads &amp; Earn Coins</h3>
+    <div class="meta">Earn extra coins here. Invite friends or complete ads to get coins, then use them to unlock videos.</div>
+    <div class="chips"><span class="chip">✅ Instant Reward</span><span class="chip">🪙 More Coins</span><span class="chip">🔓 Unlock Videos</span></div>
+    <button class="action" id="moreEarnButton">⚡ More Coin Earning</button>
+  </div>
+</main>
+<nav class="bottom-nav" aria-label="Main navigation">
+  <button type="button" class="nav-btn active" data-tab="home"><span class="ni">🏠</span>Home</button>
+  <button type="button" class="nav-btn" data-tab="trending"><span class="ni">🔥</span>Trending</button>
+  <button type="button" class="nav-btn" data-tab="profile"><span class="ni">👤</span>Profile</button>
+</nav>
+<div class="modal" id="earnModal" role="dialog" aria-modal="true" aria-label="Earn coins">
+  <section class="sheet">
+    <h2>🪙 Earn Coins</h2>
+    <p>Balance: <b id="earnBalance">0</b> coins. <span class="js-vcost">3</span> coins = 1 video without ads.</p>
+    <div class="earn-card">
+      <h3>📖 কীভাবে কয়েন আয় করবেন?</h3>
+      <div class="guide-item"><span class="guide-ico">🎁</span><div><b>জয়েন বোনাস</b><p>প্রথমবার অ্যাপে ঢুকলেই <b class="js-join">5</b> কয়েন ফ্রি পাবেন। এটা শুধু একবারই পাওয়া যায়।</p></div></div>
+      <div class="guide-item"><span class="guide-ico">📅</span><div><b>ডেইলি চেক-ইন</b><p>প্রতিদিন Profile পেজে গিয়ে "Check in today" চাপলে <b class="js-checkin">1</b> কয়েন পাবেন। রাত ১২টায় নতুন দিন শুরু হয়, তাই রোজ নেওয়া যায়।</p><button class="sm-btn" id="goProfile" type="button">Profile-এ যান →</button></div></div>
+      <div class="guide-item"><span class="guide-ico">👥</span><div><b>বন্ধুকে ইনভাইট করুন</b><p>আপনার রেফার লিংক বন্ধুকে পাঠান। বন্ধু লিংক দিয়ে অ্যাপে ঢুকে প্রথম ভিডিও দেখলে আপনি পাবেন <b class="js-refreward">5</b> কয়েন। বন্ধুকে নতুন ইউজার হতে হবে।</p></div></div>
+      <div class="guide-item"><span class="guide-ico">🔗</span><div><b>ভিডিও শেয়ার করুন</b><p>যেকোনো ভিডিও খুলে "Share &amp; Earn" চাপুন এবং লিংক বন্ধু বা গ্রুপে পাঠান। কেউ সেই লিংক দিয়ে ঢুকে বিজ্ঞাপন দেখে ভিডিওটি আনলক করলে আপনি পাবেন <b class="js-share">2</b> কয়েন। একজন একটি ভিডিওর জন্য একবারই কয়েন এনে দিতে পারে।</p></div></div>
+      <div class="guide-item"><span class="guide-ico">📺</span><div><b>বিজ্ঞাপন দেখুন</b><p>ওপরের "Watch Ad" বাটনে ১টি বিজ্ঞাপন দেখলেই পাবেন <b class="js-adreward">2</b> কয়েন। দিনে সর্বোচ্চ <b class="js-adlimit">10</b>টি বিজ্ঞাপন দেখে কয়েন নেওয়া যায়।</p></div></div>
+      <div class="guide-tip">💡 <b class="js-vcost">3</b> কয়েন জমলে যেকোনো ভিডিও বিজ্ঞাপন ছাড়াই দেখতে পারবেন। ভিডিও খুলে "Use Coins" বাটন চাপুন।</div>
+    </div>
+        <div class="earn-card">
+      <h3>👥 Invite friends</h3>
+      <p>Get <span class="js-refreward">5</span> coins when a friend joins with your link and watches their first video.</p>
+      <div class="meta">Friends rewarded: <span id="refCount">0</span></div>
+      <button class="action" id="inviteButton">Invite Friends</button>
+    </div>
+    <div class="earn-card">
+      <h3>📺 Watch an ad</h3>
+      <p>Watch 1 ad and get <span class="js-adreward">2</span> coins. Up to 10 ads per day. The ad opens a new page: wait a few seconds there, then come back.</p>
+      <div class="meta">Today: <span id="adsToday">0</span>/<span id="adsLimit">10</span></div>
+      <button class="action coin-action" id="earnAdButton">▶ Watch Ad (+<span class="js-adreward">2</span> Coins)</button>
+    </div>
+    <button class="action secondary" id="closeEarn">Close</button>
+  </section>
+</div>
+<div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-label="Video details">
+  <section class="sheet">
+    <img id="detailImage" class="detail-image" alt="Video thumbnail" hidden>
+    <h2 id="detailTitle"></h2><div class="meta" id="detailMeta"></div>
+    <p id="detailDescription">Watch this video by completing the access step.</p>
+    <button class="action" id="watchAdButton">▶ Watch Ad to Unlock</button>
+    <button class="action coin-action" id="useCoinButton" hidden>🪙 Use 1 Coin (No Ads)</button>
+    <button class="action secondary" id="shareVideoButton">🔗 Share &amp; Earn <span class="js-share">2</span> Coins</button>
+    <button class="action secondary" id="closeDetails">Close</button>
+    <p class="notice">Watch two verified ads to receive this video. After delivery, it will be deleted automatically according to the admin setting.</p>
+  </section>
+</div>
+<script>
+// Local development API. Change this to your deployed HTTPS backend URL before production.
+const API_BASE = "https://telegram-video-miniapp.onrender.com";
+const API_URL = `${API_BASE}/videos`;
+let allVideos = [], selectedVideo = null, currentUser = null;
+let allCategories = [], selectedCategory = "";
+let telegramInitData = "";
+let userVideoProgress = {};
+let userCoins = 0, referralLink = "", adsToday = 0, adsLimit = 10, videoCost = 3, adReward = 2, refReward = 5, referralCount = 0, joinBonus = 5, checkinReward = 1, shareReward = 2, checkedIn = false;
+
+async function loadUserVideoProgress(){
+ if(!telegramInitData){userVideoProgress={};return;}
+ try{
+  const response=await fetch(`${API_BASE}/video-progress/list`,{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({init_data:telegramInitData})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not load video history");
+  userVideoProgress=data.progress||{};
+ }catch(error){
+  console.error("Video progress load error:",error);
+  userVideoProgress={};
+ }
+}
+
+async function markVideoClicked(videoId){
+ if(!telegramInitData||!videoId)return;
+ const current=userVideoProgress[videoId];
+ if(current==="clicked"||current==="unlocked")return;
+ // Update locally immediately, then persist to this user's Firestore history.
+ userVideoProgress[videoId]="clicked";
+ allVideos=orderVideosByUserProgress(allVideos);
+ renderVideos();
+ try{
+  const response=await fetch(`${API_BASE}/video-progress/view`,{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({init_data:telegramInitData,video_id:videoId})
+  });
+  if(!response.ok){
+   const data=await response.json();
+   throw new Error(data.detail||"Could not save video view");
+  }
+ }catch(error){
+  console.error("Video click save error:",error);
+ }
+}
+
+function shuffleVideos(items){
+ const shuffled=[...items];
+ for(let i=shuffled.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+ }
+ return shuffled;
+}
+
+function orderVideosByUserProgress(items){
+ const unseen=[],clicked=[],unlocked=[];
+ for(const video of items){
+  const state=userVideoProgress[video.id];
+  if(state==="unlocked")unlocked.push(video);
+  else if(state==="clicked")clicked.push(video);
+  else unseen.push(video);
+ }
+ return [...shuffleVideos(unseen),...shuffleVideos(clicked),...shuffleVideos(unlocked)];
+}
+
+async function telegramLogin(){
+ const status = $("userStatus");
+ const tg = window.Telegram && window.Telegram.WebApp;
+
+ if(!tg || !tg.initData){
+   status.textContent = "Preview mode";
+   return;
+ }
+
+ // Keep the signed Telegram initData for authenticated API requests.
+ telegramInitData = tg.initData;
+
+ try{
+   tg.ready();
+   tg.expand();
+
+   const response = await fetch(`${API_BASE}/auth/telegram`, {
+     method: "POST",
+     headers: {"Content-Type": "application/json"},
+     body: JSON.stringify({init_data: tg.initData})
+   });
+
+   const result = await response.json();
+   if(!response.ok || !result.success){
+     throw new Error(result.detail || "Telegram authentication failed");
+   }
+
+   currentUser = result.user || {};
+   setCoinInfo(result);
+   if(result.join_bonus_given)setTimeout(()=>alert(`🎉 Welcome! You received ${result.join_bonus} coins as a join bonus.`),400);
+   const webAppUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
+   const displayName = [currentUser.first_name || webAppUser.first_name, currentUser.last_name || webAppUser.last_name].filter(Boolean).join(" ") || "Telegram user";
+   $("profileName").textContent = displayName;
+   status.textContent = "● Logged in";
+   status.classList.add("ok");
+   const photoUrl = webAppUser.photo_url || currentUser.photo_url || currentUser.photo;
+   if(photoUrl){
+     const avatar = $("profileAvatar");
+     const photo = document.createElement("img");
+     photo.src = photoUrl;
+     photo.alt = "Profile photo";
+     photo.className = "profile-avatar";
+     photo.onerror = () => { photo.replaceWith(document.createTextNode("👤")); };
+     avatar.replaceWith(photo);
+     photo.id = "profileAvatar";
+   } else {
+     $("profileAvatar").textContent = (displayName.trim().charAt(0) || "👤").toUpperCase();
+   }
+ }catch(error){
+   $("profileName").textContent = "Guest";
+   status.textContent = "● Login failed";
+   status.classList.add("error");
+   console.error("Telegram authentication error:", error);
+ }
+}
+const $ = id => document.getElementById(id);
+function escapeHTML(value){return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function getThumbnailUrl(video){
+ const value = video.thumbnail || video.thumbnail_id || "";
+ if(!value) return "";
+ if(typeof value === "object" && value.url) return value.url;
+ const text = String(value).trim();
+ if(/^https?:\/\//i.test(text)) return text;
+ if(text.startsWith("/")) return `${API_BASE}${text}`;
+ return `${API_BASE}/thumbnails/${encodeURIComponent(text)}/image`;
+}
+async function loadCategories(){
+ try{
+  const response=await fetch(`${API_BASE}/categories`);
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not load categories");
+  allCategories=data.categories||[];
+ }catch(error){
+  // Fallback keeps existing video categories visible if category endpoint is unavailable.
+  allCategories=[...new Set(allVideos.flatMap(video=>video.categories|| (video.category?[video.category]:[])).map(name=>String(name).trim()).filter(Boolean))]
+   .map(name=>({name}));
+ }
+ renderCategoryFilters();
+}
+
+function renderCategoryFilters(){
+ const container=$("categoryFilters");
+ const categories=allCategories.map(item=>typeof item==="string"?item:item.name).filter(Boolean);
+ if(selectedCategory&&!categories.includes(selectedCategory))selectedCategory="";
+ const buttons=[{name:"All",value:""},...categories.map(name=>({name,value:name}))];
+ container.innerHTML=buttons.map(item=>`
+  <button type="button" class="category-chip ${selectedCategory===item.value?"active":""}"
+   data-category="${escapeHTML(item.value)}">${escapeHTML(item.name)}</button>
+ `).join("");
+ container.querySelectorAll(".category-chip").forEach(button=>{
+  button.addEventListener("click",()=>{
+   selectedCategory=button.dataset.category||"";
+   renderCategoryFilters();
+   renderVideos();
+  });
+ });
+}
+
+async function loadVideos(){
+ const list=$("videoList");
+ try{
+  const response=await fetch(API_URL);
+  if(!response.ok) throw new Error("Could not load videos");
+  const data=await response.json(); allVideos=data.videos||[];
+  await loadUserVideoProgress();
+  allVideos=orderVideosByUserProgress(allVideos);
+  await loadCategories();
+  renderVideos();
+ }catch(error){list.innerHTML='<div class="empty">Could not connect to backend. Please start the backend and refresh.</div>';}
+}
+
+function renderVideos(){
+ const q=$("search").value.trim().toLowerCase();
+ const filtered=allVideos.filter(v=>{const cats=v.categories|| (v.category?[v.category]:[]);return (v.status||"active")==="active"&&((v.title||"").toLowerCase().includes(q)||cats.some(c=>String(c).toLowerCase().includes(q)))&&(!selectedCategory||cats.includes(selectedCategory));});
+ $("videoList").innerHTML=filtered.length?filtered.map((v,i)=>{
+  const thumb=getThumbnailUrl(v);
+  return `<article class="video-card" data-index="${allVideos.indexOf(v)}">
+   <div class="thumbnail">${thumb?`<img src="${escapeHTML(thumb)}" alt="" onerror="this.remove()">`:"▶"}<span class="play">▶</span></div>
+   <div class="video-info"><h3>${escapeHTML(v.title||"Untitled")}</h3><div class="video-categories">${(v.categories|| (v.category?[v.category]:[])).map(name=>`<span class="video-category">${escapeHTML(name)}</span>`).join("")||'<span class="video-category">Video</span>'}</div></div>
+  </article>`;
+ }).join(""):'<div class="empty">No videos found.</div>';
+ document.querySelectorAll(".video-card").forEach(card=>card.addEventListener("click",()=>openDetails(allVideos[Number(card.dataset.index)])));
+}
+function openDetails(video){
+ selectedVideo=video;
+ markVideoClicked(video.id);
+ updateCoinButton();
+ updateWatchLabel();
+ $("detailTitle").textContent=video.title||"Untitled";
+ $("detailMeta").textContent=(video.categories|| (video.category?[video.category]:[])).join(" · ")||"Video";
+ const img=$("detailImage"); const thumb=getThumbnailUrl(video); if(thumb){img.src=thumb;img.hidden=false;img.onerror=()=>{img.hidden=true;};}else{img.hidden=true;img.removeAttribute("src");}
+ $("detailModal").classList.add("open");
+}
+function closeDetails(){$("detailModal").classList.remove("open");selectedVideo=null;}
+$("search").addEventListener("input",()=>{renderVideos();updateSearchSuggest();});$("search").addEventListener("keydown",e=>{if(e.key==="Enter"){renderVideos();$("searchSuggest").hidden=true;}});$("searchButton").addEventListener("click",()=>{renderVideos();$("searchSuggest").hidden=true;});
+$("closeDetails").addEventListener("click",closeDetails);
+$("detailModal").addEventListener("click",e=>{if(e.target===$("detailModal"))closeDetails();});
+function setCoinInfo(info){
+ if(info.coins!==undefined)userCoins=Number(info.coins||0);
+ if(info.referral_link)referralLink=info.referral_link;
+ if(info.ads_today!==undefined)adsToday=Number(info.ads_today||0);
+ if(info.ads_limit!==undefined)adsLimit=Number(info.ads_limit||10);
+ if(info.referral_count!==undefined){referralCount=Number(info.referral_count||0);$("refCount").textContent=referralCount;}
+ $("coinCount").textContent=userCoins;
+ $("earnBalance").textContent=userCoins;
+ if(info.video_cost!==undefined)videoCost=Number(info.video_cost);
+ if(info.ad_reward!==undefined)adReward=Number(info.ad_reward);
+ if(info.referral_reward!==undefined)refReward=Number(info.referral_reward);
+ if(info.join_bonus!==undefined)joinBonus=Number(info.join_bonus);
+ if(info.checkin_reward!==undefined)checkinReward=Number(info.checkin_reward);
+ if(info.share_reward!==undefined)shareReward=Number(info.share_reward);
+ if(info.checked_in_today!==undefined)checkedIn=Boolean(info.checked_in_today);
+ document.querySelectorAll(".js-share").forEach(el=>el.textContent=shareReward);
+ document.querySelectorAll(".js-checkin").forEach(el=>el.textContent=checkinReward);
+ document.querySelectorAll(".js-join").forEach(el=>el.textContent=joinBonus);
+ document.querySelectorAll(".js-adlimit").forEach(el=>el.textContent=adsLimit);
+ updateCheckin();
+ document.querySelectorAll(".js-vcost").forEach(el=>el.textContent=videoCost);
+ document.querySelectorAll(".js-adreward").forEach(el=>el.textContent=adReward);
+ document.querySelectorAll(".js-refreward").forEach(el=>el.textContent=refReward);
+ $("adsToday").textContent=adsToday;
+ $("adsLimit").textContent=adsLimit;
+ $("earnAdButton").disabled=adsToday>=adsLimit;
+ updateCoinButton();
+ renderProfile();
+}
+function updateCoinButton(){
+ const b=$("useCoinButton");
+ b.hidden=!telegramInitData;
+ b.textContent=userCoins>=videoCost?`🪙 Use ${videoCost} Coins (No Ads) · Balance: ${userCoins}`:`🪙 Need ${videoCost} Coins (You have ${userCoins}) · Earn more`;
+}
+async function refreshReferralInfo(){
+ if(!telegramInitData)return;
+ try{
+  const r=await fetch(`${API_BASE}/referral/info`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData})});
+  const d=await r.json();
+  if(r.ok)setCoinInfo(d);
+ }catch(e){console.error("Referral info error:",e);}
+}
+function inviteFriends(){
+ if(!referralLink){alert("Referral link is not ready yet. Please reopen the Mini App inside Telegram.");return;}
+ const text="Check out this video app! Join with my link 👇";
+ const shareUrl=`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`;
+ const tg=window.Telegram&&window.Telegram.WebApp;
+ if(tg&&tg.openTelegramLink)tg.openTelegramLink(shareUrl);else window.open(shareUrl,"_blank");
+}
+$("inviteButton").addEventListener("click",()=>{refreshReferralInfo();inviteFriends();});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshReferralInfo();});
+$("useCoinButton").addEventListener("click",async()=>{
+ if(!currentUser||!telegramInitData||!selectedVideo)return;
+ if(userCoins<videoCost){closeDetails();$("earnModal").classList.add("open");return;}
+ const button=$("useCoinButton"), videoId=selectedVideo.id;
+ button.disabled=true;button.textContent="Sending video...";
+ try{
+  const response=await fetch(`${API_BASE}/use-coin`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,video_id:videoId})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not use coin");
+  userVideoProgress[videoId]="unlocked";
+  allVideos=orderVideosByUserProgress(allVideos);
+  renderVideos();
+  setCoinInfo({coins:data.coins});
+  alert(`Video sent to your Telegram chat. It will be deleted after ${data.auto_delete_minutes} minutes.`);
+  closeDetails();
+ }catch(error){alert(error.message||"Something went wrong. Please try again.");}
+ finally{button.disabled=false;updateCoinButton();}
+});
+$("searchToggle").addEventListener("click",()=>{
+ showTab("home");
+ const bar=$("searchToolbar");
+ bar.classList.toggle("collapsed");
+ if(!bar.classList.contains("collapsed"))$("search").focus();
+});
+$("earnButton").addEventListener("click",()=>{$("earnModal").classList.add("open");refreshReferralInfo();});
+$("closeEarn").addEventListener("click",()=>$("earnModal").classList.remove("open"));
+$("earnModal").addEventListener("click",e=>{if(e.target===$("earnModal"))$("earnModal").classList.remove("open");});
+let coinAdSession=null,coinAdPreparing=false;
+async function prepareCoinAd(){
+ if(coinAdPreparing||!currentUser||!telegramInitData||adsToday>=adsLimit)return;
+ coinAdPreparing=true;
+ try{
+  const response=await fetch(`${API_BASE}/coin-ad/start`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData})});
+  const session=await response.json();
+  if(response.ok)coinAdSession={...session,at:Date.now()};
+ }catch(error){console.error("Coin ad prepare error:",error);}
+ finally{coinAdPreparing=false;}
+}
+new MutationObserver(()=>{
+ if($("earnModal").classList.contains("open")&&(!coinAdSession||Date.now()-coinAdSession.at>600000))prepareCoinAd();
+}).observe($("earnModal"),{attributes:true,attributeFilter:["class"]});
+$("earnAdButton").addEventListener("click",async()=>{
+ if(!currentUser||!telegramInitData){alert("Please open this Mini App inside Telegram first.");return;}
+ const button=$("earnAdButton");
+ const session=coinAdSession&&Date.now()-coinAdSession.at<600000?coinAdSession:null;
+ if(!session){
+  button.disabled=true;button.textContent="Preparing ad...";
+  await prepareCoinAd();
+  button.textContent=`▶ Watch Ad (+${adReward} Coins)`;button.disabled=adsToday>=adsLimit;
+  alert(coinAdSession?"The ad is ready. Tap the button once more to watch it.":"Could not prepare the ad. Please try again.");
+  return;
+ }
+ coinAdSession=null;
+ button.disabled=true;
+ try{
+  button.textContent="Ad: Please wait...";
+  // Rewarded Popup must start directly inside the tap, so nothing is awaited before this call.
+  await showOneRewardedAd(session.ymid,"coin_ad","pop");
+  button.textContent="Verifying ad...";
+  const started=Date.now();
+  while(true){
+   const claimResponse=await fetch(`${API_BASE}/coin-ad/claim`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,session_id:session.session_id})});
+   const claim=await claimResponse.json();
+   if(!claimResponse.ok)throw new Error(claim.detail||"Could not add coin");
+   if(!claim.pending){setCoinInfo(claim);alert(`🪙 +${adReward} Coins added!`);break;}
+   if(Date.now()-started>60000)throw new Error("Ad verification is taking too long. Please try again in a moment.");
+   await new Promise(resolve=>setTimeout(resolve,2500));
+  }
+ }catch(error){alert(error.message||"Something went wrong. Please try again.");}
+ finally{button.textContent=`▶ Watch Ad (+${adReward} Coins)`;button.disabled=adsToday>=adsLimit;prepareCoinAd();}
+});
+function updateSearchSuggest(){
+ const box=$("searchSuggest");
+ const q=$("search").value.trim().toLowerCase();
+ if(!q){box.hidden=true;box.innerHTML="";return;}
+ const cats=allCategories.map(c=>typeof c==="string"?c:c.name).filter(n=>n&&n.toLowerCase().includes(q)).slice(0,5);
+ const vids=allVideos.filter(v=>(v.status||"active")==="active"&&(v.title||"").toLowerCase().includes(q)).slice(0,5);
+ if(!cats.length&&!vids.length){box.innerHTML='<div class="sg-title">No matches</div>';box.hidden=false;return;}
+ box.innerHTML=(cats.length?'<div class="sg-title">Categories</div>'+cats.map(n=>`<div class="sg-item" data-cat="${escapeHTML(n)}"><span>🏷 ${escapeHTML(n)}</span></div>`).join(""):"")
+  +(vids.length?'<div class="sg-title">Videos</div>'+vids.map(v=>{const t=getThumbnailUrl(v);return `<div class="sg-item" data-vid="${escapeHTML(v.id)}">${t?`<img src="${escapeHTML(t)}" alt="" onerror="this.remove()">`:""}<span>${escapeHTML(v.title||"Untitled")}</span></div>`;}).join(""):"");
+ box.hidden=false;
+}
+$("searchSuggest").addEventListener("click",e=>{
+ const item=e.target.closest(".sg-item");
+ if(!item)return;
+ if(item.dataset.cat){selectedCategory=item.dataset.cat;$("search").value="";renderCategoryFilters();renderVideos();}
+ else if(item.dataset.vid){const v=allVideos.find(x=>x.id===item.dataset.vid);if(v)openDetails(v);}
+ $("searchSuggest").hidden=true;
+});
+function updateCheckin(){
+ const b=$("checkinButton");
+ b.disabled=checkedIn;
+ b.textContent=checkedIn?"✅ Checked in today. Come back tomorrow":`📅 Check in today (+${checkinReward} Coin${checkinReward===1?"":"s"})`;
+}
+$("checkinButton").addEventListener("click",async()=>{
+ if(!currentUser||!telegramInitData){alert("Please open this Mini App inside Telegram first.");return;}
+ const b=$("checkinButton");b.disabled=true;
+ try{
+  const response=await fetch(`${API_BASE}/checkin`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Check-in failed");
+  setCoinInfo({coins:data.coins,checked_in_today:true});
+  alert(data.already?"You already checked in today.":`✅ +${checkinReward} Coin added!`);
+ }catch(error){alert(error.message||"Something went wrong. Please try again.");updateCheckin();}
+});
+$("shareVideoButton").addEventListener("click",()=>{
+ if(!selectedVideo||!referralLink||!currentUser){alert("Please open this Mini App inside Telegram first.");return;}
+ const link=referralLink.replace(/startapp=.*$/,"startapp=v_"+selectedVideo.id+"_"+currentUser.telegram_id);
+ const text="🎬 "+(selectedVideo.title||"Watch this video");
+ const shareUrl=`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+ const tg=window.Telegram&&window.Telegram.WebApp;
+ if(tg&&tg.openTelegramLink)tg.openTelegramLink(shareUrl);else window.open(shareUrl,"_blank");
+});
+function openSharedVideo(){
+ const tg=window.Telegram&&window.Telegram.WebApp;
+ const param=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||"";
+ if(!param.startsWith("v_"))return;
+ const video=allVideos.find(v=>v.id===param.split("_")[1]&&(v.status||"active")==="active");
+ if(video)openDetails(video);
+}
+$("goProfile").addEventListener("click",()=>{$("earnModal").classList.remove("open");showTab("profile");});
+function showTab(tab){
+ $("homeView").hidden=tab!=="home";
+ $("trendingView").hidden=tab!=="trending";
+ $("profileView").hidden=tab!=="profile";
+ document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+ if(tab==="trending")loadTrending();
+ if(tab==="profile"){refreshReferralInfo();renderProfile();}
+ window.scrollTo(0,0);
+}
+function trendingCard(v,rank){
+ const thumb=getThumbnailUrl(v);
+ const cats=v.categories||(v.category?[v.category]:[]);
+ return `<article class="video-card" data-id="${escapeHTML(v.id)}">
+  <div class="thumbnail">${thumb?`<img src="${escapeHTML(thumb)}" alt="" onerror="this.remove()">`:"▶"}${rank?`<span class="rank">#${rank}</span>`:""}<span class="play">▶</span></div>
+  <div class="video-info"><h3>${escapeHTML(v.title||"Untitled")}</h3><div class="video-categories">${cats.map(n=>`<span class="video-category">${escapeHTML(n)}</span>`).join("")||'<span class="video-category">Video</span>'}</div></div>
+ </article>`;
+}
+async function loadTrending(){
+ const box=$("trendingList");
+ box.innerHTML='<div class="empty">Loading...</div>';
+ try{
+  const response=await fetch(`${API_BASE}/trending`);
+  const data=await response.json();
+  if(!response.ok)throw new Error("Trending failed");
+  const byId=new Map(allVideos.map(v=>[v.id,v]));
+  const ranked=(data.trending||[]).map(t=>byId.get(t.video_id)).filter(v=>v&&(v.status||"active")==="active").slice(0,15);
+  const used=new Set(ranked.map(v=>v.id));
+  const pool=allVideos.filter(v=>(v.status||"active")==="active"&&!used.has(v.id));
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const items=ranked.concat(pool.slice(0,15-ranked.length));
+  box.innerHTML=items.length?items.map((v,i)=>trendingCard(v,i<ranked.length?i+1:0)).join(""):'<div class="empty">No videos available yet.</div>';
+  box.querySelectorAll(".video-card").forEach(card=>card.addEventListener("click",()=>openDetails(byId.get(card.dataset.id))));
+ }catch(error){
+  console.error("Trending error:",error);
+  box.innerHTML='<div class="empty">Could not load trending videos.</div>';
+ }
+}
+function renderProfile(){
+ const tg=window.Telegram&&window.Telegram.WebApp;
+ const w=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+ const u=currentUser||{};
+ const name=[u.first_name||w.first_name,u.last_name||w.last_name].filter(Boolean).join(" ")||"Guest";
+ $("pfName").textContent=name;
+ const username=u.username||w.username;
+ $("pfUser").textContent=username?`@${username}`:"";
+ const avatar=$("pfAvatar"), photo=w.photo_url||u.photo_url;
+ avatar.textContent="";
+ const initial=(name.trim().charAt(0)||"👤").toUpperCase();
+ if(photo){
+  const img=document.createElement("img");
+  img.src=photo;img.alt="";img.style.cssText="width:100%;height:100%;object-fit:cover";
+  img.onerror=()=>{avatar.textContent=initial;};
+  avatar.appendChild(img);
+ }else avatar.textContent=initial;
+ $("pfCoins").textContent=userCoins;
+ $("pfRefs").textContent=referralCount;
+ $("pfReward").textContent=refReward;
+ $("pfJoin").textContent=joinBonus;
+ $("pfCode").textContent=u.telegram_id||w.id||"-";
+ $("pfLink").textContent=referralLink||"Open this Mini App inside Telegram to get your link";
+}
+document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+$("moreEarnButton").addEventListener("click",()=>{$("earnModal").classList.add("open");refreshReferralInfo();});
+$("shareLinkButton").addEventListener("click",inviteFriends);
+$("copyLinkButton").addEventListener("click",async()=>{
+ if(!referralLink){alert("Referral link is not ready yet. Please reopen the Mini App inside Telegram.");return;}
+ try{await navigator.clipboard.writeText(referralLink);}
+ catch(e){const t=document.createElement("textarea");t.value=referralLink;document.body.appendChild(t);t.select();try{document.execCommand("copy");}catch(_){}t.remove();}
+ alert("Referral link copied!");
+});
+async function waitForVerifiedAd(sessionId, timeoutMs=120000){
+ const started=Date.now();
+ while(Date.now()-started<timeoutMs){
+  const response=await fetch(`${API_BASE}/ad-status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,session_id:sessionId})});
+  const data=await response.json();
+  if(!response.ok) throw new Error(data.detail||"Could not verify ad");
+  if(data.verified_count>=2) return data;
+  await new Promise(resolve=>setTimeout(resolve,2500));
+ }
+ throw new Error("Ad verification is taking too long. Please try again in a moment.");
+}
+async function showOneRewardedAd(ymid, label, type="end"){
+ if(typeof window.show_12170493!=="function") throw new Error("Monetag SDK is not loaded. Please reopen the Mini App.");
+ const result=await window.show_12170493({type,ymid,requestVar:label});
+ if(result?.reward_event_type!=="valued") throw new Error("Monetag did not confirm a rewarded ad. Please try again.");
+}
+const UNLOCK_LABEL="▶ Watch 2 Ads to Unlock", AD2_LABEL="▶ Tap to watch Ad 2 of 2 (Popup)";
+let unlockFlow=null;
+function updateWatchLabel(){
+ $("watchAdButton").textContent=(unlockFlow&&selectedVideo&&unlockFlow.videoId===selectedVideo.id)?AD2_LABEL:UNLOCK_LABEL;
+}
+async function finishUnlock(button, flow){
+ button.textContent="Verifying both ads...";
+ await waitForVerifiedAd(flow.session.session_id);
+ button.textContent="Sending video...";
+ const deliveryResponse=await fetch(`${API_BASE}/deliver`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,session_id:flow.session.session_id})});
+ const delivery=await deliveryResponse.json();
+ if(!deliveryResponse.ok) throw new Error(delivery.detail||"Video delivery failed");
+ unlockFlow=null;
+ userVideoProgress[flow.videoId]="unlocked";
+ allVideos=orderVideosByUserProgress(allVideos);
+ renderVideos();
+ alert(`Video sent to your Telegram chat. It will be deleted after ${delivery.auto_delete_minutes} minutes.`);
+ closeDetails();
+}
+$("watchAdButton").addEventListener("click",async()=>{
+ if(!currentUser||!telegramInitData){alert("Please open this Mini App inside Telegram first.");return;}
+ if(!selectedVideo)return;
+ const button=$("watchAdButton");
+ button.disabled=true;
+ // Step 2: Rewarded Popup. It must start directly inside this tap, so nothing is awaited before it.
+ if(unlockFlow&&unlockFlow.videoId===selectedVideo.id){
+  const flow=unlockFlow;
+  try{
+   if(!flow.popupDone){
+    button.textContent="Ad 2 of 2: Please wait...";
+    await showOneRewardedAd(flow.session.ymid2,"video_unlock_ad2","pop");
+    flow.popupDone=true;
+   }
+   await finishUnlock(button,flow);
+  }catch(error){
+   alert(error.message||"Something went wrong. Please try again.");
+   if(/expired|not found/i.test(error.message||""))unlockFlow=null;
+  }finally{button.disabled=false;updateWatchLabel();}
+  return;
+ }
+ // Step 1: Rewarded Interstitial.
+ const videoId=selectedVideo.id;
+ try{
+  button.textContent="Preparing ads...";
+  const startResponse=await fetch(`${API_BASE}/ad-sessions`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init_data:telegramInitData,video_id:videoId})});
+  const session=await startResponse.json();
+  if(!startResponse.ok) throw new Error(session.detail||"Could not start ad session");
+  button.textContent="Ad 1 of 2: Please wait...";
+  await showOneRewardedAd(session.ymid1,"video_unlock_ad1","end");
+  unlockFlow={videoId,session,popupDone:false};
+  alert("Ad 1 of 2 completed. Tap the button once more to watch Ad 2.");
+ }catch(error){alert(error.message||"Something went wrong. Please try again.");}
+ finally{button.disabled=false;updateWatchLabel();}
+});
+// In-App Interstitial: starts once, when the 4th video thumbnail comes into view.
+let inAppStarted=false;
+function startInApp(){
+ if(inAppStarted||typeof window.show_12170493!=="function")return;
+ inAppStarted=true;
+ try{Promise.resolve(window.show_12170493({type:"inApp",inAppSettings:{frequency:3,capping:0.5,interval:90,timeout:5,everyPage:false}})).catch(()=>{});}
+ catch(error){console.error("In-App ad error:",error);}
+}
+function checkFourthThumbnail(){
+ if(inAppStarted||$("homeView").hidden)return;
+ const cards=document.querySelectorAll("#homeView .video-card");
+ if(cards.length>=4&&cards[3].getBoundingClientRect().top<window.innerHeight)startInApp();
+}
+window.addEventListener("scroll",checkFourthThumbnail,{passive:true});
+telegramLogin().finally(()=>loadVideos().then(()=>{openSharedVideo();checkFourthThumbnail();}));
+</script>
+</body>
+</html>
