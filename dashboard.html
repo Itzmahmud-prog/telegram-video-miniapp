@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Video Library</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10131b;color:#fff;font-family:Arial,sans-serif}
+header{padding:20px 5%;background:#1c2230;border-bottom:1px solid #343b4b;display:flex;justify-content:space-between;align-items:center}
+header h2{margin:0;color:#6c9cff}
+.container{max-width:1100px;margin:30px auto;padding:0 20px}
+.welcome{margin-bottom:25px;color:#aab2c3}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:25px}
+.stat,.panel{background:#1c2230;border:1px solid #343b4b;border-radius:13px;padding:22px}
+.stat small{color:#aab2c3}.stat h2{margin-bottom:0;color:#6c9cff}h3{margin-top:0}
+form{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.field{display:flex;flex-direction:column;gap:8px}.field.full{grid-column:1/-1}
+label{font-size:14px;color:#cbd5e1}
+input,select{width:100%;padding:13px;background:#101722;color:white;border:1px solid #343b4b;border-radius:8px}
+button{padding:13px 18px;border:0;border-radius:8px;background:#3979ed;color:white;font-weight:bold;cursor:pointer}
+button:hover{background:#2865d2}button:disabled{opacity:.6;cursor:wait}
+#message{margin-top:15px;font-size:14px}
+.video{padding:15px 0;border-bottom:1px solid #343b4b;display:flex;justify-content:space-between;gap:15px;align-items:center}
+.video-info{display:flex;align-items:center;gap:14px;min-width:0}.video-info strong{overflow-wrap:anywhere}
+.video-info small{display:block;color:#aab2c3;margin-top:7px}
+.thumbnail{width:110px;height:70px;object-fit:cover;border-radius:8px;background:#101722;flex-shrink:0}
+.status{color:#4ade80;white-space:nowrap;font-size:13px}.empty{color:#aab2c3;padding:15px 0}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:12px;margin-top:15px}
+.gallery-item{border:2px solid #343b4b;border-radius:10px;padding:7px;background:#101722;cursor:pointer;text-align:left;color:#fff;min-width:0}
+.gallery-item:hover{border-color:#6c9cff}.gallery-item.selected{border-color:#4ade80;box-shadow:0 0 0 2px #4ade8033}
+.gallery-item img{width:100%;height:95px;object-fit:cover;border-radius:6px;display:block;background:#1c2230}
+.gallery-item small{display:block;margin-top:7px;color:#cbd5e1;overflow-wrap:anywhere}
+.gallery-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.secondary{background:#374151}.secondary:hover{background:#4b5563}
+.video-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.edit-button{background:#b7791f}.edit-button:hover{background:#975a16}
+.delete-button{background:#b91c1c}.delete-button:hover{background:#991b1b}
+.selected-note{color:#4ade80;font-size:13px;margin-top:10px;overflow-wrap:anywhere}
+.category-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #343b4b;flex-wrap:wrap}
+.category-name{font-weight:bold;overflow-wrap:anywhere}
+.category-actions{display:flex;gap:7px;flex-wrap:wrap}
+.category-actions button{padding:8px 11px;font-size:12px}
+@media(max-width:600px){form{grid-template-columns:1fr}.field.full{grid-column:auto}.video{align-items:flex-start;flex-direction:column}.thumbnail{width:90px;height:65px}}
+.media-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #343b4b;border-radius:10px;padding:9px 10px;background:#101722;font-size:13px}
+.media-chip button{width:auto;padding:4px 9px;background:#d64545;border:0;border-radius:7px;color:#fff;cursor:pointer;font-weight:bold}
+</style>
+</head>
+<body>
+<header><h2>▶ Video Admin</h2><span><a href="admin-pro.html" style="color:#6c9cff;margin-right:14px;text-decoration:none">Coins, Users &amp; More →</a><a href="#" id="adminLogout" style="color:#aab2c3;text-decoration:none">Logout</a></span></header>
+<div class="container">
+<h2>Dashboard</h2>
+<p class="welcome">Welcome to your Video Library Management System.</p>
+<div class="stats">
+ <div class="stat"><small>Total Videos</small><h2 id="totalVideos">0</h2></div>
+ <div class="stat"><small>Saved Telegram Thumbnails</small><h2 id="totalThumbnails">0</h2></div>
+ <div class="stat"><small>System Status</small><h2>Online</h2></div>
+</div>
+
+<div class="panel" style="margin-bottom:20px">
+ <h3>⏱ Auto Delete Settings</h3>
+ <p class="welcome">ভিডিও পাঠানোর পর কত মিনিটে ইউজারের চ্যাট থেকে মুছে যাবে তা নির্ধারণ করুন। Default: ৩০ মিনিট।</p>
+ <div class="field" style="max-width:360px">
+  <label for="autoDeleteMinutes">Auto Delete Time (Minutes)</label>
+  <input id="autoDeleteMinutes" type="number" min="1" max="10080" value="30">
+ </div>
+ <div class="gallery-actions"><button type="button" id="saveAutoDelete">Save Settings</button><span id="settingsMessage" aria-live="polite"></span></div>
+</div>
+
+
+<div class="panel" style="margin-bottom:20px">
+ <h3>📁 Category Management</h3>
+ <p class="welcome">এখান থেকে Category তৈরি, Rename এবং Delete করতে পারবেন। ভিডিওতে ব্যবহৃত Category Delete করা যাবে না।</p>
+ <div class="field" style="max-width:500px">
+  <label for="newCategoryName">New Category Name</label>
+  <input id="newCategoryName" type="text" maxlength="40" placeholder="Enter category name">
+ </div>
+ <div class="gallery-actions">
+  <button type="button" id="createCategoryButton">＋ Create Category</button>
+  <span id="categoryMessage" aria-live="polite"></span>
+ </div>
+ <div id="categoryList"><p class="empty">Loading categories...</p></div>
+</div>
+
+<div class="panel">
+<h3>＋ Add New Video</h3>
+<form id="videoForm">
+ <div class="field full"><label for="title">Video Title</label><input id="title" type="text" placeholder="Enter video title" required></div>
+ <div class="field full"><label>Categories (একাধিক Category নির্বাচন করতে পারবেন)</label><div id="categoryOptions" class="gallery"><span class="empty">Loading categories...</span></div></div>
+ <div class="field"><label for="videoStatus">Video Status</label><select id="videoStatus"><option value="active">Active (show in Mini App)</option><option value="pending">Pending (hide from users)</option></select></div>
+ <div class="field full"><label for="thumbnail">Thumbnail Image URL (Optional — direct image URL)</label><input id="thumbnail" type="url" placeholder="https://example.com/image.jpg"></div>
+ <div class="field full">
+  <label>Choose a photo uploaded to your Telegram video Channel</label>
+  <div id="thumbnailGallery" class="gallery"><p class="empty">Loading saved thumbnails...</p></div>
+  <button type="button" class="secondary" id="loadMoreThumbnails" hidden>Load More Thumbnails</button>
+  <div class="gallery-actions">
+   <button type="button" class="secondary" id="clearThumbnail">Clear selection</button>
+   <button type="button" class="secondary" id="refreshThumbnails">Refresh gallery</button>
+  </div>
+  <div id="selectedThumbnail" class="selected-note">No channel thumbnail selected.</div>
+ </div>
+ <div class="field full" id="mediaPanel" style="display:none">
+  <label>🎞 Media in this entry (each item is sent separately and is protected: no save, download or forward)</label>
+  <div id="mediaItems" class="gallery"></div>
+  <div class="gallery-actions" style="margin-top:10px">
+   <select id="attachVideoSelect"><option value="">Add another pending channel video…</option></select>
+   <button type="button" class="secondary" id="attachVideoBtn">Add video</button>
+  </div>
+  <label style="margin-top:12px">Tap a channel photo to add it to this entry as a picture</label>
+  <div id="attachGallery" class="gallery"></div>
+ </div>
+ <div class="field full"><button type="submit" id="addButton">Add Video</button><button type="button" class="secondary" id="cancelEdit" hidden style="margin-top:10px;width:100%">Cancel Edit</button></div>
+</form>
+<div id="message"></div>
+</div>
+<br>
+<div class="panel"><h3>Video Library</h3><div id="videoList"><p class="empty">Loading videos...</p></div><button type="button" class="secondary" id="loadMoreAdminVideos" hidden>Load More Videos</button></div>
+</div>
+
+<script>
+const API_URL = "https://telegram-video-miniapp.onrender.com";
+if(!localStorage.getItem("admin_token"))location.replace("admin.html");
+async function adminFetch(url,options={}){
+ options.headers=Object.assign({},options.headers,{Authorization:"Bearer "+(localStorage.getItem("admin_token")||"")});
+ const response=await fetch(url,options);
+ if(response.status===401){localStorage.removeItem("admin_token");location.replace("admin.html");}
+ return response;
+}
+document.getElementById("adminLogout").onclick=e=>{e.preventDefault();["admin_token","admin_role","admin_user"].forEach(k=>localStorage.removeItem(k));location.replace("admin.html");};
+let selectedThumbnailUrl = "";
+let editingVideoId = null;
+let thumbnailCursor="", thumbnailHasMore=false, adminVideoCursor="", adminVideoHasMore=false, adminVideoLoading=false;
+
+function escapeHTML(value){
+ return String(value ?? "").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+}
+
+
+let managedCategories = [];
+
+function showCategoryMessage(message, isError=false){
+ const el=document.getElementById("categoryMessage");
+ el.textContent=message;
+ el.style.color=isError?"#ff6b6b":"#4ade80";
+}
+
+async function loadCategories(selectedName=""){
+ const list=document.getElementById("categoryList");
+ const options=document.getElementById("categoryOptions");
+ try{
+  const response=await fetch(API_URL+"/categories");
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not load categories");
+  managedCategories=data.categories||[];
+
+  const selectedValues=Array.isArray(selectedName)?selectedName:(selectedName?[selectedName]:[]);
+  options.innerHTML=managedCategories.length?managedCategories.map(item=>`<label class="category-option" style="display:flex;align-items:center;gap:8px;padding:9px;background:#101722;border:1px solid #343b4b;border-radius:8px"><input type="checkbox" name="videoCategories" value="${escapeHTML(item.name)}" ${selectedValues.includes(item.name)?"checked":""} style="width:auto">${escapeHTML(item.name)}</label>`).join(""):'<span class="empty">No categories available. Create a category above.</span>';
+
+  if(!managedCategories.length){
+   list.innerHTML='<p class="empty">No categories yet. Create your first category above.</p>';
+   return;
+  }
+
+  list.innerHTML=managedCategories.map(item=>`
+   <div class="category-row">
+    <span class="category-name">${escapeHTML(item.name)}</span>
+    <div class="category-actions">
+     <button type="button" class="edit-button" data-category-action="rename" data-id="${escapeHTML(item.id)}">Rename</button>
+     <button type="button" class="delete-button" data-category-action="delete" data-id="${escapeHTML(item.id)}">Delete</button>
+    </div>
+   </div>`).join("");
+
+  list.querySelectorAll('[data-category-action="rename"]').forEach(button=>{
+   button.addEventListener("click",()=>renameCategory(button.dataset.id));
+  });
+  list.querySelectorAll('[data-category-action="delete"]').forEach(button=>{
+   button.addEventListener("click",()=>deleteCategory(button.dataset.id,button));
+  });
+ }catch(error){
+  list.innerHTML='<p class="empty">Could not load categories: '+escapeHTML(error.message)+'</p>';
+  showCategoryMessage(error.message,true);
+ }
+}
+
+async function createCategory(){
+ const input=document.getElementById("newCategoryName");
+ const name=input.value.trim();
+ if(!name){showCategoryMessage("Category name লিখুন।",true);return;}
+ const button=document.getElementById("createCategoryButton");
+ button.disabled=true;
+ try{
+  const response=await adminFetch(API_URL+"/categories",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({name})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Category could not be created");
+  input.value="";
+  showCategoryMessage("Category created successfully!");
+  await loadCategories(name);
+ }catch(error){
+  showCategoryMessage(error.message,true);
+ }finally{
+  button.disabled=false;
+ }
+}
+
+async function renameCategory(categoryId){
+ const item=managedCategories.find(category=>String(category.id)===String(categoryId));
+ if(!item)return;
+ const newName=prompt("নতুন Category নাম লিখুন:",item.name);
+ if(newName===null)return;
+ if(!newName.trim()){showCategoryMessage("Category name খালি রাখা যাবে না।",true);return;}
+ try{
+  const response=await adminFetch(API_URL+"/categories/"+encodeURIComponent(categoryId),{
+   method:"PUT",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({name:newName.trim()})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Category could not be renamed");
+  showCategoryMessage("Category renamed successfully!");
+  await loadCategories(newName.trim());
+  await loadVideos();
+ }catch(error){
+  showCategoryMessage(error.message,true);
+ }
+}
+
+async function deleteCategory(categoryId,button){
+ const item=managedCategories.find(category=>String(category.id)===String(categoryId));
+ if(!item)return;
+ if(!confirm('Delete category "'+item.name+'"?'))return;
+ button.disabled=true;
+ try{
+  const response=await adminFetch(API_URL+"/categories/"+encodeURIComponent(categoryId),{method:"DELETE"});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Category could not be deleted");
+  showCategoryMessage("Category deleted successfully!");
+  await loadCategories();
+ }catch(error){
+  showCategoryMessage(error.message,true);
+  button.disabled=false;
+ }
+}
+
+document.getElementById("createCategoryButton").addEventListener("click",createCategory);
+document.getElementById("newCategoryName").addEventListener("keydown",event=>{
+ if(event.key==="Enter"){event.preventDefault();createCategory();}
+});
+function safeImageURL(value){
+ try{
+  const url=new URL(value, API_URL);
+  if(url.protocol!=="https:"&&url.protocol!=="http:")return "";
+  if(url.hostname==="127.0.0.1"||url.hostname==="localhost")return API_URL+url.pathname+url.search;
+  return url.href;
+ }catch(error){return "";}
+}
+function setSelectedThumbnail(url,label){
+ selectedThumbnailUrl=url;
+ document.getElementById("selectedThumbnail").textContent=url ? "Selected: "+label : "No channel thumbnail selected.";
+ document.querySelectorAll(".gallery-item").forEach(item=>{
+  item.classList.toggle("selected",item.dataset.imageUrl===url);
+ });
+ // When a Telegram thumbnail is selected, clear the direct URL field.
+ if(url) document.getElementById("thumbnail").value="";
+}
+async function loadThumbnails(reset=true){
+ const gallery=document.getElementById("thumbnailGallery"), more=document.getElementById("loadMoreThumbnails");
+ if(reset){thumbnailCursor="";thumbnailHasMore=false;gallery.innerHTML='<p class="empty">Loading saved thumbnails...</p>';}
+ if(more){more.disabled=true;more.textContent="Loading...";}
+ try{
+  const url=new URL(API_URL+"/thumbnails");url.searchParams.set("limit","20");if(thumbnailCursor)url.searchParams.set("cursor",thumbnailCursor);
+  const response=await fetch(url.toString());if(!response.ok)throw new Error("Could not load thumbnails");
+  const data=await response.json(), thumbnails=data.thumbnails||[];
+  thumbnailCursor=data.next_cursor||"";thumbnailHasMore=!!data.has_more;
+  if(reset)gallery.innerHTML="";
+  const offset=gallery.querySelectorAll(".gallery-item").length;
+  if(!offset&&!thumbnails.length){gallery.innerHTML='<p class="empty">No channel photos yet. Upload a photo to your Telegram Channel, then refresh this gallery.</p>';}
+  else gallery.insertAdjacentHTML("beforeend",thumbnails.map((item,index)=>{
+   const imageUrl=API_URL+"/thumbnails/"+encodeURIComponent(item.id)+"/image";
+   return `<button type="button" class="gallery-item" data-image-url="${escapeHTML(imageUrl)}" data-label="Channel photo ${offset+index+1}"><img src="${escapeHTML(imageUrl)}" alt="Channel thumbnail ${offset+index+1}" loading="lazy" onerror="this.style.opacity='.25'"><small>Channel photo ${offset+index+1}</small></button>`;
+  }).join(""));
+  document.getElementById("totalThumbnails").textContent=offset+thumbnails.length+(thumbnailHasMore?"+":"");
+  gallery.querySelectorAll(".gallery-item").forEach(item=>{if(!item.dataset.bound){item.dataset.bound="1";item.addEventListener("click",()=>setSelectedThumbnail(item.dataset.imageUrl,item.dataset.label));}});
+  if(selectedThumbnailUrl)setSelectedThumbnail(selectedThumbnailUrl,"selected channel photo");
+  if(more){more.hidden=!thumbnailHasMore;more.disabled=false;more.textContent="Load More Thumbnails";}
+ }catch(error){document.getElementById("totalThumbnails").textContent="—";if(reset)gallery.innerHTML='<p class="empty">Could not load channel photos. Check the backend and Telegram channel bot permissions.</p>';if(more)more.hidden=true;}
+}
+document.getElementById("loadMoreThumbnails").addEventListener("click",()=>loadThumbnails(false));
+
+async function loadAutoDeleteSettings(){
+ try{
+  const response=await adminFetch(API_URL+"/admin/settings");
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not load settings");
+  document.getElementById("autoDeleteMinutes").value=data.auto_delete_minutes||30;
+ }catch(error){
+  const message=document.getElementById("settingsMessage");
+  message.textContent="Settings load failed: "+error.message;
+  message.style.color="#ff6b6b";
+ }
+}
+
+async function saveAutoDeleteSettings(){
+ const input=document.getElementById("autoDeleteMinutes");
+ const message=document.getElementById("settingsMessage");
+ const minutes=Number(input.value);
+ if(!Number.isInteger(minutes)||minutes<1||minutes>10080){
+  message.textContent="সময় ১ থেকে ১০০৮০ মিনিটের মধ্যে দিন।";
+  message.style.color="#ff6b6b";
+  return;
+ }
+ const button=document.getElementById("saveAutoDelete");
+ button.disabled=true;button.textContent="Saving...";message.textContent="";
+ try{
+  const response=await adminFetch(API_URL+"/admin/settings",{
+   method:"PUT",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({auto_delete_minutes:minutes})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Could not save settings");
+  message.textContent="Saved! Auto Delete: "+data.auto_delete_minutes+" minutes";
+  message.style.color="#4ade80";
+ }catch(error){
+  message.textContent="Error: "+error.message;
+  message.style.color="#ff6b6b";
+ }finally{button.disabled=false;button.textContent="Save Settings";}
+}
+
+document.getElementById("saveAutoDelete").addEventListener("click",saveAutoDeleteSettings);
+
+async function loadVideos(reset=true){
+ const list=document.getElementById("videoList"),more=document.getElementById("loadMoreAdminVideos");
+ if(adminVideoLoading)return;
+ if(reset){adminVideoCursor="";adminVideoHasMore=false;list.innerHTML='<p class="empty">Loading videos...</p>';}
+ adminVideoLoading=true;if(more){more.disabled=true;more.textContent="Loading...";}
+ try{
+  const url=new URL(API_URL+"/videos");url.searchParams.set("limit","20");if(adminVideoCursor)url.searchParams.set("cursor",adminVideoCursor);
+  const response=await fetch(url.toString());if(!response.ok)throw new Error("Could not load videos");
+  const data=await response.json(),videos=data.videos||[];adminVideoCursor=data.next_cursor||"";adminVideoHasMore=!!data.has_more;
+  const pendingVideos=videos.filter(video=>(video.status||"active")==="pending"),activeVideos=videos.filter(video=>(video.status||"active")!=="pending");
+  const renderVideo=video=>{
+   const thumbnailURL=safeImageURL(video.thumbnail||"");
+   const imageHTML=thumbnailURL?`<img class="thumbnail" src="${escapeHTML(thumbnailURL)}" alt="Video Thumbnail" onerror="this.onerror=null;this.src='https://placehold.co/220x140/1c2230/6c9cff?text=No+Thumbnail';">`:`<img class="thumbnail" src="https://placehold.co/220x140/1c2230/6c9cff?text=No+Thumbnail" alt="Default Thumbnail">`;
+   return `<div class="video"><div class="video-info">${imageHTML}<div><strong>${escapeHTML(video.title)}</strong><small>${escapeHTML((video.categories|| (video.category?[video.category]:[])).join(", ")||"Category not set")}${(video.item_count||1)>1?" · 🎞 "+video.item_count+" items":""}</small></div></div><div class="video-actions"><span class="status">● ${escapeHTML(video.status||"active")}</span><div class="field" style="min-width:190px;max-width:220px"><label for="videoDelete-${escapeHTML(video.id)}">এই ভিডিওর Auto Delete (মিনিট)</label><input id="videoDelete-${escapeHTML(video.id)}" type="number" min="0" max="10080" step="1" value="${Number(video.auto_delete_minutes)||0}" placeholder="0 = Default"><small style="color:#aab2c3">0 দিলে Global Default (${Number(document.getElementById("autoDeleteMinutes").value)||30} মিনিট) হবে</small><button type="button" class="secondary" data-action="save-delete-time" data-id="${escapeHTML(video.id)}">Save Delete Time</button><span id="deleteTimeMessage-${escapeHTML(video.id)}" aria-live="polite"></span></div><button type="button" class="edit-button" data-action="edit" data-id="${escapeHTML(video.id)}">Edit / Review</button><button type="button" class="delete-button" data-action="delete" data-id="${escapeHTML(video.id)}">Delete</button></div></div>`;
+  };
+  const pageHTML=(pendingVideos.length?`<h3>Pending Videos</h3>${pendingVideos.map(renderVideo).join("")}`:"")+(activeVideos.length?`<h3 style="margin-top:25px">Active Videos</h3>${activeVideos.map(renderVideo).join("")}`:"");
+  if(reset)list.innerHTML=pageHTML||'<p class="empty">No videos added yet.</p>';else list.insertAdjacentHTML("beforeend",pageHTML);
+  list.querySelectorAll('button[data-action="edit"]').forEach(button=>{if(button.dataset.bound)return;button.dataset.bound="1";button.addEventListener("click",()=>{const video=videos.find(item=>String(item.id)===button.dataset.id);if(video)startEdit(video);});});
+  list.querySelectorAll('button[data-action="save-delete-time"]').forEach(button=>{if(button.dataset.bound)return;button.dataset.bound="1";button.addEventListener("click",()=>saveVideoDeleteTime(button.dataset.id,button));});
+  list.querySelectorAll('button[data-action="delete"]').forEach(button=>{if(button.dataset.bound)return;button.dataset.bound="1";button.addEventListener("click",()=>deleteVideo(button.dataset.id,button));});
+  if(more){more.hidden=!adminVideoHasMore;more.disabled=false;more.textContent="Load More Videos";}
+  document.getElementById("totalVideos").textContent=(list.querySelectorAll(".video").length)+(adminVideoHasMore?"+":"");
+ }catch(error){if(reset)list.innerHTML='<p class="empty">Backend connection failed. Please check your server.</p>';if(more)more.hidden=true;}
+ finally{adminVideoLoading=false;if(more&&more.textContent==="Loading..."){more.disabled=false;more.textContent="Load More Videos";}}
+}
+document.getElementById("loadMoreAdminVideos").addEventListener("click",()=>loadVideos(false));
+
+async function saveVideoDeleteTime(videoId,button){
+ const input=document.getElementById("videoDelete-"+videoId);
+ const message=document.getElementById("deleteTimeMessage-"+videoId);
+ const minutes=Number(input.value);
+ if(!Number.isInteger(minutes)||minutes<0||minutes>10080){
+  message.textContent="০ থেকে ১০০৮০ মিনিট দিন।";message.style.color="#ff6b6b";return;
+ }
+ button.disabled=true;button.textContent="Saving...";message.textContent="";
+ try{
+  const response=await adminFetch(API_URL+"/admin/videos/"+encodeURIComponent(videoId)+"/delete-time",{
+   method:"PUT",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({auto_delete_minutes:minutes})
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.detail||"সময় Save করা যায়নি");
+  message.textContent=minutes===0?"Saved: Global Default":"Saved: "+minutes+" minutes";
+  message.style.color="#4ade80";
+ }catch(error){message.textContent="Error: "+error.message;message.style.color="#ff6b6b";}
+ finally{button.disabled=false;button.textContent="Save Delete Time";}
+}
+
+async function startEdit(video){
+ editingVideoId=String(video.id);
+ document.getElementById("title").value=video.title||"";
+ await loadCategories(Array.isArray(video.categories)?video.categories:(video.category?[video.category]:[]));
+ const thumbnail=video.thumbnail||"";
+ const isTelegramThumbnail=thumbnail.includes("/thumbnails/") && thumbnail.includes("/image");
+ if(isTelegramThumbnail){
+  document.getElementById("thumbnail").value="";
+  setSelectedThumbnail(thumbnail,"current Telegram thumbnail");
+ }else{
+  selectedThumbnailUrl="";
+  document.getElementById("thumbnail").value=thumbnail;
+  document.getElementById("selectedThumbnail").textContent=thumbnail?"Using direct image URL.":"No channel thumbnail selected.";
+  document.querySelectorAll(".gallery-item").forEach(item=>item.classList.remove("selected"));
+ }
+ document.getElementById("addButton").textContent="Save Changes";
+ loadMediaPanel(video.id);
+ document.getElementById("cancelEdit").hidden=false;
+ document.querySelector(".panel h3").textContent="✎ Edit Video";
+ document.getElementById("message").textContent="Editing: "+(video.title||"video");
+ document.getElementById("message").style.color="#6c9cff";
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+let currentMediaVideoId=null;
+async function loadMediaPanel(videoId){
+ currentMediaVideoId=videoId;
+ const panel=document.getElementById("mediaPanel");
+ panel.style.display="";
+ try{
+  const [mediaResponse,thumbResponse]=await Promise.all([adminFetch(API_URL+"/admin/videos/"+encodeURIComponent(videoId)+"/media"),fetch(API_URL+"/thumbnails?limit=20")]);
+  const media=await mediaResponse.json();
+  if(!mediaResponse.ok)throw new Error(media.detail||"Could not load media");
+  const photos=thumbResponse.ok?((await thumbResponse.json()).thumbnails||[]):[];
+  document.getElementById("mediaItems").innerHTML=media.items.map((item,index)=>`<div class="media-chip"><span>#${index+1} ${item.type==="photo"?"🖼 Picture":"🎬 Video"}</span><button type="button" data-remove="${escapeHTML(String(item.message_id))}">✕</button></div>`).join("")||'<p class="empty">No items.</p>';
+  document.getElementById("attachVideoSelect").innerHTML='<option value="">Add another pending channel video…</option>'+media.candidates.map(item=>`<option value="${escapeHTML(item.id)}">${escapeHTML(item.title||item.id)} (${item.item_count})</option>`).join("");
+  document.getElementById("attachGallery").innerHTML=photos.map((item,index)=>`<button type="button" class="gallery-item" data-photo="${escapeHTML(item.id)}"><img src="${escapeHTML(API_URL+"/thumbnails/"+encodeURIComponent(item.id)+"/image")}" alt="" loading="lazy" onerror="this.style.opacity='.25'"><small>Photo ${index+1}</small></button>`).join("")||'<p class="empty">No channel photos yet.</p>';
+ }catch(error){
+  document.getElementById("mediaItems").innerHTML='<p class="empty">Could not load media: '+escapeHTML(error.message)+'</p>';
+ }
+}
+async function changeMedia(path,body,okText){
+ const message=document.getElementById("message");
+ try{
+  const response=await adminFetch(API_URL+"/admin/videos/"+encodeURIComponent(currentMediaVideoId)+"/media/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.detail||"Could not update media");
+  message.style.color="#4ade80";message.textContent=okText(result);
+  await loadMediaPanel(currentMediaVideoId);
+  await loadVideos();
+ }catch(error){message.style.color="#ff6b6b";message.textContent="Error: "+error.message;}
+}
+document.getElementById("mediaPanel").addEventListener("click",event=>{
+ const remove=event.target.closest("[data-remove]");
+ const photo=event.target.closest("[data-photo]");
+ if(remove){
+  if(confirm("Remove this item from the entry?"))changeMedia("remove",{message_id:Number(remove.dataset.remove)},()=>"Item removed.");
+ }else if(photo){
+  changeMedia("add",{photo_ids:[photo.dataset.photo]},r=>r.added?"Picture added.":"That picture is already in this entry.");
+ }else if(event.target.id==="attachVideoBtn"){
+  const id=document.getElementById("attachVideoSelect").value;
+  if(!id)return;
+  if(confirm("Merge that pending video into this entry? The other pending entry will be removed."))changeMedia("add",{video_ids:[id]},r=>r.added?"Video added.":"Nothing new to add.");
+ }
+});
+
+function resetVideoForm(){
+ editingVideoId=null;
+ document.getElementById("videoForm").reset();
+ setSelectedThumbnail("","");
+ document.getElementById("addButton").textContent="Add Video";
+ document.getElementById("mediaPanel").style.display="none";
+ document.getElementById("cancelEdit").hidden=true;
+ document.querySelector(".panel h3").textContent="＋ Add New Video";
+}
+
+async function deleteVideo(videoId,button){
+ if(!confirm("Are you sure you want to delete this video? This cannot be undone."))return;
+ button.disabled=true;
+ button.textContent="Deleting...";
+ try{
+  const response=await adminFetch(API_URL+"/videos/"+encodeURIComponent(videoId),{method:"DELETE"});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.detail||"Video could not be deleted");
+  document.getElementById("message").style.color="#4ade80";
+  document.getElementById("message").textContent="Video deleted successfully!";
+  if(editingVideoId===String(videoId))resetVideoForm();
+  await loadVideos();
+ }catch(error){
+  document.getElementById("message").style.color="#ff6b6b";
+  document.getElementById("message").textContent="Error: "+error.message;
+  button.disabled=false;
+  button.textContent="Delete";
+ }
+}
+
+document.getElementById("thumbnail").addEventListener("input",()=>{
+ if(document.getElementById("thumbnail").value.trim())setSelectedThumbnail("","");
+});
+document.getElementById("clearThumbnail").addEventListener("click",()=>setSelectedThumbnail("",""));
+document.getElementById("refreshThumbnails").addEventListener("click",loadThumbnails);
+
+document.getElementById("videoForm").addEventListener("submit",async function(event){
+ event.preventDefault();
+ const button=document.getElementById("addButton");
+ const message=document.getElementById("message");
+ const directThumbnail=document.getElementById("thumbnail").value.trim();
+ if(directThumbnail&&!safeImageURL(directThumbnail)){
+  message.style.color="#ff6b6b";message.textContent="Please enter a valid HTTP or HTTPS image URL.";return;
+ }
+ const selectedCategories=[...document.querySelectorAll('input[name="videoCategories"]:checked')].map(input=>input.value);
+ if(!selectedCategories.length){message.style.color="#ff6b6b";message.textContent="Please select at least one category.";return;}
+ const video={
+  title:document.getElementById("title").value.trim(),
+  categories:selectedCategories,
+  category:selectedCategories.join(", "),
+  thumbnail:selectedThumbnailUrl||directThumbnail,
+  status:"active"
+ };
+ const isEditing=Boolean(editingVideoId);
+ const url=isEditing?API_URL+"/videos/"+encodeURIComponent(editingVideoId):API_URL+"/videos";
+ button.disabled=true;
+ button.textContent=isEditing?"Saving...":"Adding...";
+ message.textContent="";
+ try{
+  const response=await adminFetch(url,{
+   method:isEditing?"PUT":"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(video)
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.detail||(isEditing?"Video could not be updated":"Video could not be added"));
+  message.style.color="#4ade80";
+  message.textContent=isEditing?"Video updated successfully!":"Video added successfully!";
+  resetVideoForm();
+  await loadVideos();
+ }catch(error){
+  message.style.color="#ff6b6b";
+  message.textContent="Error: "+error.message;
+ }finally{
+  button.disabled=false;
+  button.textContent=editingVideoId?"Save Changes":"Add Video";
+ }
+});
+
+document.getElementById("cancelEdit").addEventListener("click",()=>{
+ resetVideoForm();
+ document.getElementById("message").textContent="Edit cancelled.";
+ document.getElementById("message").style.color="#aab2c3";
+});
+loadCategories().then(()=>loadVideos());
+loadThumbnails();
+loadAutoDeleteSettings();
+</script>
+</body>
+</html>
